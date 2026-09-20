@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingBottom="12dp"
+            android:text="← 返回"
+            android:textColor="@color/accent"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="管理间隔选项"
+            android:textColor="@color/ink"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="保存后的选项会出现在主页，下次直接点选即可。"
+            android:textColor="@color/ink_muted"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:id="@+id/presetList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/formTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="新增选项"
+            android:textColor="@color/ink"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/inputName"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input"
+            android:hint="名称（可空，例如 轻松刷）"
+            android:inputType="text"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/ink_muted"
+            android:textSize="15sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/inputMin"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_input"
+                android:hint="最小秒"
+                android:inputType="number"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                android:textColor="@color/ink"
+                android:textColorHint="@color/ink_muted"
+                android:textSize="15sp" />
+
+            <EditText
+                android:id="@+id/inputMax"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_input"
+                android:hint="最大秒"
+                android:inputType="number"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                android:textColor="@color/ink"
+                android:textColorHint="@color/ink_muted"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnAdd"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/accent"
+            android:text="添加并保存"
+            android:textColor="@color/on_accent" />
+
+        <Button
+            android:id="@+id/btnCancelEdit"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/bg_soft"
+            android:text="取消编辑"
+            android:textColor="@color/ink"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>

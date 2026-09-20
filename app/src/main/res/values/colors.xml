@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FFFFF6EE</color>
+    <color name="bg_elevated">#FFFFFFFF</color>
+    <color name="bg_soft">#FFFFE8D6</color>
+    <color name="ink">#FF2A211C</color>
+    <color name="ink_muted">#FF8A7A70</color>
+    <color name="ink_faint">#FFC4B6AB</color>
+    <color name="accent">#FFFF8F66</color>
+    <color name="accent_pressed">#FFF07850</color>
+    <color name="accent_soft">#FFFFE0D2</color>
+    <color name="on_accent">#FFFFF6EE</color>
+    <color name="success">#FF3CB98A</color>
+    <color name="success_soft">#FFD8F5EA</color>
+    <color name="danger">#FFE85D4C</color>
+    <color name="warn">#FFC9892C</color>
+    <color name="stroke">#FFF0E2D6</color>
+    <color name="shadow">#142A211C</color>
+    <color name="launcher_bg">#FFFFF0E6</color>
+
+    <!-- Aliases so existing layouts keep compiling while they migrate -->
+    <color name="card">@color/bg_elevated</color>
+    <color name="card_stroke">@color/stroke</color>
+    <color name="text">@color/ink</color>
+    <color name="muted">@color/ink_muted</color>
+    <color name="overlay_bg">#F7FFF6EE</color>
+    <color name="overlay_btn">@color/bg_soft</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">自动上滑</string>
+    <string name="accessibility_description">只需开启一次。开启后本应用会在后台保持运行，这样无障碍开关就不会被系统随便关掉。不会读取密码或聊天内容，只在你点「开」后向上滑动屏幕。</string>
+    <string name="notification_channel">运行状态</string>
+    <string name="notification_running">后台保持运行中，打开应用即可直接上滑</string>
+    <string name="notification_swiping">已开启，滑一下歇一下</string>
+</resources>

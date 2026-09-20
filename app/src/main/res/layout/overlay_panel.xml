@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <com.hy.autoswipe.OverlayPanelView
+        android:id="@+id/panel"
+        android:layout_width="52dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_overlay"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingLeft="4dp"
+        android:paddingTop="8dp"
+        android:paddingRight="4dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/btnStart"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_circle_start"
+            android:gravity="center"
+            android:text="开"
+            android:textColor="@color/on_accent"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnPause"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_circle_pause"
+            android:gravity="center"
+            android:text="停"
+            android:textColor="@color/ink"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="停"
+            android:textColor="@color/ink_muted"
+            android:textSize="10sp" />
+    </com.hy.autoswipe.OverlayPanelView>
+
+    <TextView
+        android:id="@+id/edgeArrow"
+        android:layout_width="16dp"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_arrow_right"
+        android:gravity="center"
+        android:text="‹"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+</FrameLayout>
