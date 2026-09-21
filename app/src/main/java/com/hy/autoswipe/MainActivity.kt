@@ -7,19 +7,43 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.LayoutInflater
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.hy.autoswipe.databinding.ActivityMainBinding
+import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private var didAutoCheck = false
+    private var pendingApk: File? = null
+    private var downloadDialog: AlertDialog? = null
+    private val downloadCancelled = AtomicBoolean(false)
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { refreshStatus() }
+
+    private val unknownSourcesLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        val file = pendingApk
+        if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
+            AppUpdater.installApk(this, file)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +89,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnManagePresets.setOnClickListener {
             startActivity(Intent(this, PresetsActivity::class.java))
         }
+        binding.btnCheckUpdate.setOnClickListener { checkForUpdate(manual = true) }
+        renderAppVersion()
     }
 
     override fun onResume() {
@@ -79,6 +105,20 @@ class MainActivity : AppCompatActivity() {
         if (SwipeAccessibilityService.isEnabled(this)) {
             PermissionStore.markAccessibilityGranted(this)
         }
+        val file = pendingApk
+        if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
+            pendingApk = null
+            AppUpdater.installApk(this, file)
+        }
+        if (!didAutoCheck) {
+            didAutoCheck = true
+            checkForUpdate(manual = false)
+        }
+    }
+
+    private fun renderAppVersion() {
+        binding.textAppVersion.text =
+            "当前版本 ${AppUpdater.currentVersionName(this)}（${AppUpdater.currentVersionCode(this)}）"
     }
 
     private fun applyInterval() {
@@ -218,4 +258,95 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun color(id: Int): Int = ContextCompat.getColor(this, id)
+
+    private fun checkForUpdate(manual: Boolean) {
+        if (manual) {
+            binding.btnCheckUpdate.isEnabled = false
+            binding.btnCheckUpdate.text = "正在检查…"
+        }
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { AppUpdater.check(this@MainActivity) }
+            binding.btnCheckUpdate.isEnabled = true
+            binding.btnCheckUpdate.text = "检查更新"
+            when (result) {
+                is UpdateCheckResult.Available -> showUpdateDialog(result.info)
+                UpdateCheckResult.UpToDate -> if (manual) {
+                    Toast.makeText(this@MainActivity, "已经是最新版本", Toast.LENGTH_SHORT).show()
+                }
+                is UpdateCheckResult.Failed -> if (manual) {
+                    Toast.makeText(this@MainActivity, result.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showUpdateDialog(info: UpdateInfo) {
+        val message = buildString {
+            append("版本 ${info.versionName}")
+            if (info.note.isNotBlank()) {
+                append("\n\n")
+                append(info.note)
+            }
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("发现新版本")
+            .setMessage(message)
+            .setPositiveButton("更新") { _, _ -> downloadAndInstall(info) }
+            .setNegativeButton("稍后", null)
+            .show()
+    }
+
+    private fun downloadAndInstall(info: UpdateInfo) {
+        downloadCancelled.set(false)
+        val dest = AppUpdater.apkFile(this)
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_update_progress, null, false)
+        val progressText = view.findViewById<TextView>(R.id.progressText)
+        val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
+        downloadDialog = MaterialAlertDialogBuilder(this)
+            .setTitle("正在下载")
+            .setView(view)
+            .setNegativeButton("取消") { _, _ -> downloadCancelled.set(true) }
+            .setCancelable(false)
+            .show()
+        lifecycleScope.launch {
+            val downloaded = withContext(Dispatchers.IO) {
+                try {
+                    AppUpdater.download(this@MainActivity, info, dest, { downloadCancelled.get() }) { percent ->
+                        runOnUiThread {
+                            if (isDestroyed) return@runOnUiThread
+                            progressBar.progress = percent
+                            progressText.text = "正在下载 $percent%"
+                        }
+                    }
+                    Result.success(dest)
+                } catch (error: Exception) {
+                    Result.failure(error)
+                }
+            }
+            downloadDialog?.dismiss()
+            downloadDialog = null
+            downloaded.fold(
+                onSuccess = { file -> installDownloaded(file) },
+                onFailure = { error ->
+                    if (!downloadCancelled.get() && error !is InterruptedException) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            AppUpdater.describeError(error),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                },
+            )
+        }
+    }
+
+    private fun installDownloaded(file: File) {
+        if (!AppUpdater.canInstallPackages(this)) {
+            pendingApk = file
+            Toast.makeText(this, "请允许「自动上滑」安装未知应用，然后返回", Toast.LENGTH_LONG).show()
+            unknownSourcesLauncher.launch(AppUpdater.installPermissionIntent(this))
+            return
+        }
+        AppUpdater.installApk(this, file)
+    }
 }

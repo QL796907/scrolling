@@ -5,4 +5,5 @@
     <string name="notification_channel">运行状态</string>
     <string name="notification_running">后台保持运行中，打开应用即可直接上滑</string>
     <string name="notification_swiping">已开启，滑一下歇一下</string>
+    <string name="github_token" translatable="false"></string>
 </resources>
