@@ -227,7 +227,9 @@ object AppUpdater {
 
     private fun openFollowing(url: String, token: String?, accept: String): HttpURLConnection {
         var current = url
-        repeat(8) {
+        var hops = 0
+        while (hops < 8) {
+            hops += 1
             val host = URL(current).host
             val connection = (URL(current).openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = false
@@ -254,7 +256,7 @@ object AppUpdater {
         throw IllegalStateException("http-redirect")
     }
 
-    fun describeError(error: Exception): String {
+    fun describeError(error: Throwable): String {
         val text = error.message.orEmpty()
         return when {
             error is InterruptedException -> "已取消下载"
