@@ -2,7 +2,8 @@
 
 本机 Android 工具。点「开」后按随机间隔向上滑动屏幕。
 
-- 包名：`com.hy.autoswipe`
+- 本地目录：`scrolling`
+- 包名：`com.hy.autoswipe`（不要随文件夹改名，否则手机无法覆盖安装）
 - 版本：1.7（`versionCode` 8）
 - 仓库：https://github.com/QL796907/-
 

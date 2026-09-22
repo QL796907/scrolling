@@ -21,5 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AutoSwipe"
+rootProject.name = "scrolling"
 include(":app")
