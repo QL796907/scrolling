@@ -5,7 +5,7 @@
 - 本地目录：`scrolling`
 - 包名：`com.hy.autoswipe`（不要随文件夹改名，否则手机无法覆盖安装）
 - 版本：1.8（`versionCode` 9）
-- 仓库：https://github.com/QL796907/-
+- 仓库：https://github.com/QL796907/scrolling
 
 ## 构建
 
@@ -22,5 +22,5 @@
 4. 第一次发版写完整 README；之后每次发版只更新 README 里有变化的部分
 5. GitHub Release 同时挂 `autoswipe.apk` 和 `version.json`
 
-检查更新地址：`https://github.com/QL796907/-/releases/latest/download/version.json`  
+检查更新地址：`https://github.com/QL796907/scrolling/releases/latest/download/version.json`  
 仓库需 Public，手机才能不登录下载。

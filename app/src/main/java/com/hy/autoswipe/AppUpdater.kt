@@ -29,7 +29,7 @@ sealed class UpdateCheckResult {
 
 object AppUpdater {
     const val GITHUB_OWNER = "QL796907"
-    const val GITHUB_REPO = "-"
+    const val GITHUB_REPO = "scrolling"
     const val VERSION_JSON_URL =
         "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest/download/version.json"
     private const val LATEST_API =

@@ -4,11 +4,11 @@
 
 当前版本 **1.8**（`versionCode` 9）  
 包名 `com.hy.autoswipe`  
-仓库 <https://github.com/QL796907/->
+仓库 <https://github.com/QL796907/scrolling>
 
 ## 安装
 
-1. 从 [Releases](https://github.com/QL796907/-/releases/latest) 下载 `autoswipe.apk`
+1. 从 [Releases](https://github.com/QL796907/scrolling/releases/latest) 下载 `autoswipe.apk`
 2. 允许浏览器 / 文件管理器安装未知应用
 3. 安装后打开「自动上滑」
 
@@ -49,4 +49,5 @@
 ## 1.8
 
 - 本地工程目录改为 `scrolling`（应用包名未改，可覆盖安装）
+- GitHub 仓库同步为 `QL796907/scrolling`
 - 补充项目说明与发版流程
