@@ -1,0 +1,28 @@
+---
+description: Git、发版、AGENTS.md 与 Android 构建验收
+alwaysApply: true
+---
+
+# 项目协作
+
+## Git
+
+每完成一轮更改目标后，在 `main` 上直接 commit。不开分支，不创建 PR。
+
+不要自行 push，也不要自行创建 GitHub Release；这两步必须用户明确说。
+
+先保证本轮能收工再 commit。不要提交 APK、`local.properties`、密钥、非空的 `github_token`。
+
+## 发版
+
+用户要求发版时，必须附带 APK（`autoswipe.apk`），并按需附上 `version.json`。不要只发源码。
+
+## AGENTS.md
+
+若仓库没有 `AGENTS.md` 就创建。每完成一轮后只更新有变化的部分：项目做什么、怎么构建、当前版本、怎么发版。保持短，不要写成长文档。
+
+## 验收
+
+改动应用代码时，必须成功编出 debug APK（`build-apk.ps1` 或 `assembleDebug`）才算完成。
+
+若这台机器暂时编不了（没 SDK、Gradle 失败等），必须在回复里说明原因，不能假装做完。
