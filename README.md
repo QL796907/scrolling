@@ -1,34 +1,52 @@
 # 自动上滑
 
-本机 Android 工具：点「开」后按随机间隔向上滑动屏幕，用来刷短视频。
+本机 Android 小工具：点「开」之后，按随机间隔自动向上滑动屏幕，用来刷短视频。不联网刷量，也不读取聊天或密码。
 
-- 包名：`com.hy.autoswipe`
-- 当前版本：1.7（`versionCode` 8）
-- 仓库：[https://github.com/QL796907/-](https://github.com/QL796907/-)
+当前版本 **1.8**（`versionCode` 9）  
+包名 `com.hy.autoswipe`  
+仓库 <https://github.com/QL796907/->
 
-## 使用
+## 安装
 
-1. 开启无障碍（「自动上滑」）
-2. 允许悬浮窗
-3. 建议关闭电池优化并允许自启动
-4. 侧边栏点「开」开始，点「停」暂停；往屏幕外拖可收起
+1. 从 [Releases](https://github.com/QL796907/-/releases/latest) 下载 `autoswipe.apk`
+2. 允许浏览器 / 文件管理器安装未知应用
+3. 安装后打开「自动上滑」
+
+已经装过旧版时，用同一台电脑打出来的包可以直接覆盖安装。换签名则需要先卸载。
+
+## 第一次使用
+
+按主页卡片从上到下开权限，开一次即可：
+
+1. **无障碍** — 系统设置里找到「自动上滑」并打开。若打开后马上被关掉：先点「允许受限制的设置」，再回来打开无障碍。
+2. **悬浮窗** — 允许后才会出现侧边「开 / 停」。
+3. **电池不优化（建议）** — 关闭电池限制，并允许自启动，以免无障碍被系统杀掉。
+
+## 日常怎么用
+
+- 打开应用后，屏幕侧边会出现控制条。
+- 点 **开**：开始倒计时，到点后向上滑一下。
+- 点 **停**：暂停。
+- 把控制条拖出屏幕可收成一条边，点一下再拉回来。
+- 划动间隔在主页设置，默认 60–120 秒随机，可保存成选项。
+
+## 检查更新
+
+主页底部可看当前版本，也可点「检查更新」。有新版本会下载 APK，再进入系统安装页，需要你点一次安装。
+
+请把本仓库设为 **Public**，手机才能不登录 GitHub 就下载。若仍是 Private，检查更新会失败。
 
 ## 构建
 
-用 Android Studio 打开本仓库，连接手机后 Run。  
-或在本机执行 `build-apk.ps1`（需已安装 JDK 17 与 Android SDK）。
+需要 JDK 17 与 Android SDK。用 Android Studio 打开本仓库后 Run，或在仓库根目录执行：
 
-## 应用内更新
+```powershell
+.\build-apk.ps1
+```
 
-主界面会自动检查 GitHub 上的最新 Release，也可以点「检查更新」。
+成功后会生成 `autoswipe.apk`。
 
-发版步骤：
+## 1.8
 
-1. 把 `app/build.gradle.kts` 里的 `versionCode` 加 1，并改 `versionName`
-2. 同步修改仓库根目录的 `version.json`
-3. 打包 APK，文件名改为 `autoswipe.apk`
-4. 在 GitHub 新建 Release，同时挂上 `autoswipe.apk` 和 `version.json`
-5. 手机打开应用即可检查、下载、安装
-
-**仓库需要设为 Public**，手机才能不登录就下载。现在如果仍是 Private，检查更新会失败。  
-也可以在 `app/src/main/res/values/strings.xml` 的 `github_token` 里填 GitHub PAT（只适合自己用的包，不要把带 token 的 APK 发给别人）。
+- 本地工程目录改为 `scrolling`（应用包名未改，可覆盖安装）
+- 补充项目说明与发版流程

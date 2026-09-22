@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.7",
+  "versionCode": 9,
+  "versionName": "1.8",
   "apkUrl": "https://github.com/QL796907/-/releases/latest/download/autoswipe.apk",
-  "note": "加入应用内检查更新"
+  "note": "工程目录更名为 scrolling，补充说明文档"
 }
