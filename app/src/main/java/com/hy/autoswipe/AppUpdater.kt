@@ -106,7 +106,10 @@ object AppUpdater {
             .forEach { resolve ->
                 context.grantUriPermission(resolve.activityInfo.packageName, uri, flags)
             }
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {
+        }
     }
 
     private fun githubToken(context: Context): String? =

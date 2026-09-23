@@ -71,23 +71,31 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        createChannel()
-        startInForeground()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        // 用户点过「收起」后，进程被杀再拉起也不要自动把侧边栏弹回来
-        if (!wasHiddenByUser()) {
-            showOverlay()
+        try {
+            createChannel()
+        } catch (_: Exception) {
         }
-        handler.post(watchdog)
+        startInForegroundSafely()
+        try {
+            windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+            if (!wasHiddenByUser()) {
+                showOverlay()
+            }
+            handler.post(watchdog)
+        } catch (_: Exception) {
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> startSwiping()
-            ACTION_PAUSE -> pauseSwiping()
-            ACTION_STOP, ACTION_HIDE -> hidePanel()
-            ACTION_SHOW -> showOverlay()
-            else -> if (!wasHiddenByUser()) showOverlay()
+        try {
+            when (intent?.action) {
+                ACTION_START -> startSwiping()
+                ACTION_PAUSE -> pauseSwiping()
+                ACTION_STOP, ACTION_HIDE -> hidePanel()
+                ACTION_SHOW -> showOverlay()
+                else -> if (!wasHiddenByUser()) showOverlay()
+            }
+        } catch (_: Exception) {
         }
         return START_STICKY
     }
@@ -108,7 +116,11 @@ class OverlayService : Service() {
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         }
         if (!::binding.isInitialized) {
-            inflateOverlay()
+            try {
+                inflateOverlay()
+            } catch (_: Exception) {
+                return
+            }
         }
         try {
             windowManager.addView(binding.root, params)
@@ -134,13 +146,15 @@ class OverlayService : Service() {
     }
 
     private fun inflateOverlay() {
-        binding = OverlayPanelBinding.inflate(LayoutInflater.from(this))
+        binding = OverlayPanelBinding.inflate(
+            LayoutInflater.from(android.view.ContextThemeWrapper(this, R.style.Theme_AutoSwipe)),
+        )
 
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            dp(56),
+            dp(148),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            // FLAG_LAYOUT_NO_LIMITS 会把窗口画进状态栏，MIUI 上时间/电量会不停闪
+            // 必须写死宽高：部分 ROM 会把 WRAP_CONTENT 铺成全屏，把主界面按钮点击全部吃掉
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT,
@@ -161,11 +175,11 @@ class OverlayService : Service() {
             animator?.cancel()
             dragAccumX += dx
             val minX = 0
-            val maxX = (screenWidth() - binding.root.width.coerceAtLeast(dp(16))).coerceAtLeast(0)
+            val maxX = (screenWidth() - overlayWidth()).coerceAtLeast(0)
             params.x = (params.x + dx).coerceIn(minX, maxX)
             params.y = (params.y + dy).coerceIn(
                 statusBarInset(),
-                (screenHeight() - binding.root.height.coerceAtLeast(dp(44))).coerceAtLeast(statusBarInset()),
+                (screenHeight() - overlayHeight()).coerceAtLeast(statusBarInset()),
             )
             try {
                 windowManager.updateViewLayout(binding.root, params)
@@ -232,7 +246,7 @@ class OverlayService : Service() {
 
     private fun settleAfterDrag() {
         val screenW = screenWidth()
-        val width = binding.root.width.takeIf { it > 0 } ?: dp(52)
+        val width = overlayWidth()
         val center = params.x + width / 2
         dockRight = center >= screenW / 2
         // 不能再拖出屏幕外，改为：朝贴边方向多拖一段就收成箭头
@@ -250,6 +264,8 @@ class OverlayService : Service() {
             if (dockRight) R.drawable.bg_arrow_right else R.drawable.bg_arrow_left,
         )
         binding.panel.interceptAllTouches = false
+        params.width = overlayWidth()
+        params.height = overlayHeight()
     }
 
     private fun applyDock(animate: Boolean) {
@@ -257,11 +273,11 @@ class OverlayService : Service() {
         applyPeekUi()
         binding.root.post {
             if (!panelAttached || !::binding.isInitialized) return@post
-            val width = binding.root.width.takeIf { it > 0 } ?: if (peeked) dp(16) else dp(52)
+            val width = overlayWidth()
             val targetX = if (dockRight) screenWidth() - width else 0
             val targetY = params.y.coerceIn(
                 statusBarInset(),
-                (screenHeight() - binding.root.height).coerceAtLeast(statusBarInset()),
+                (screenHeight() - overlayHeight()).coerceAtLeast(statusBarInset()),
             )
             moveTo(targetX, targetY, animate)
         }
@@ -329,12 +345,8 @@ class OverlayService : Service() {
     }
 
     private fun promptAccessibility() {
+        SettingsPages.openAccessibility(this)
         Toast.makeText(this, "请打开一次「自动上滑」无障碍，之后会保持开启", Toast.LENGTH_LONG).show()
-        startActivity(
-            Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK,
-            ),
-        )
     }
 
     private fun pauseSwiping() {
@@ -380,7 +392,11 @@ class OverlayService : Service() {
         refreshNotification()
     }
 
-    private fun overlayStartX(): Int = screenWidth() - dp(60)
+    private fun overlayWidth(): Int = if (peeked) dp(20) else dp(56)
+
+    private fun overlayHeight(): Int = if (peeked) dp(48) else dp(148)
+
+    private fun overlayStartX(): Int = screenWidth() - overlayWidth()
 
     private fun overlayStartY(): Int = statusBarInset() + dp(180)
 
@@ -427,16 +443,35 @@ class OverlayService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun startInForeground() {
-        val notification = buildNotification()
+    private fun startInForegroundSafely() {
+        val notification = try {
+            buildNotification()
+        } catch (_: Exception) {
+            NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_swipe_up)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.notification_running))
+                .setOngoing(true)
+                .setSilent(true)
+                .build()
+        }
+        val attempts = mutableListOf<() -> Unit>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFY_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-            )
-        } else {
-            startForeground(NOTIFY_ID, notification)
+            attempts += {
+                startForeground(
+                    NOTIFY_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            }
+        }
+        attempts += { startForeground(NOTIFY_ID, notification) }
+        for (attempt in attempts) {
+            try {
+                attempt()
+                return
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -520,10 +555,17 @@ class OverlayService : Service() {
 
         private fun startServiceInternal(context: Context, intent: Intent) {
             val appContext = context.applicationContext
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                appContext.startForegroundService(intent)
-            } else {
-                appContext.startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    appContext.startForegroundService(intent)
+                } else {
+                    appContext.startService(intent)
+                }
+            } catch (_: Exception) {
+                try {
+                    appContext.startService(intent)
+                } catch (_: Exception) {
+                }
             }
         }
 

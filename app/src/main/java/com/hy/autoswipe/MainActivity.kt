@@ -2,7 +2,6 @@ package com.hy.autoswipe
 
 import android.Manifest
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -53,34 +52,29 @@ class MainActivity : AppCompatActivity() {
         SystemBars.lockLight(this)
 
         binding.btnRestricted.setOnClickListener {
-            startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.parse("package:$packageName")
-                },
-            )
-            Toast.makeText(
-                this,
-                "点右上角三个点 → 允许受限制的设置，然后返回再打开无障碍",
-                Toast.LENGTH_LONG,
-            ).show()
+            if (SettingsPages.openAppDetails(this)) {
+                Toast.makeText(
+                    this,
+                    "点右上角三个点 → 允许受限制的设置，然后返回再打开无障碍",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
         }
         binding.btnAccessibility.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            Toast.makeText(this, "找到「自动上滑」并打开开关", Toast.LENGTH_LONG).show()
+            if (SettingsPages.openAccessibility(this)) {
+                Toast.makeText(this, "找到「自动上滑」并打开开关", Toast.LENGTH_LONG).show()
+            }
         }
         binding.btnOverlay.setOnClickListener {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName"),
-            )
-            startActivity(intent)
+            SettingsPages.openOverlay(this)
         }
         binding.btnBattery.setOnClickListener {
             requestUnrestrictedBattery()
         }
         binding.btnAutostart.setOnClickListener {
-            OemSettings.openAutostart(this)
-            Toast.makeText(this, "请允许「自动上滑」自启动和后台运行", Toast.LENGTH_LONG).show()
+            if (OemSettings.openAutostart(this)) {
+                Toast.makeText(this, "请允许「自动上滑」自启动和后台运行", Toast.LENGTH_LONG).show()
+            }
         }
         binding.btnLaunch.setOnClickListener { launchOverlay() }
         binding.btnStop.setOnClickListener {
@@ -89,7 +83,11 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnApplyInterval.setOnClickListener { applyInterval() }
         binding.btnManagePresets.setOnClickListener {
-            startActivity(Intent(this, PresetsActivity::class.java))
+            try {
+                startActivity(Intent(this, PresetsActivity::class.java))
+            } catch (_: Exception) {
+                Toast.makeText(this, "无法打开选项页", Toast.LENGTH_SHORT).show()
+            }
         }
         binding.btnCheckUpdate.setOnClickListener { checkForUpdate(manual = true) }
         renderAppVersion()
@@ -97,34 +95,42 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        maybeAskNotificationPermission()
-        maybeAskBatteryOnce()
-        refreshStatus()
-        renderInterval()
-        if (Settings.canDrawOverlays(this)) {
-            // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏
+        try {
             binding.root.post {
-                if (isDestroyed || isFinishing) return@post
-                if (Settings.canDrawOverlays(this)) {
-                    OverlayService.ensureRunning(this)
-                }
-                refreshStatus()
-                binding.root.postDelayed({
-                    if (!isDestroyed) refreshStatus()
-                }, 400)
+                if (!isDestroyed) maybeAskNotificationPermission()
             }
-        }
-        if (SwipeAccessibilityService.isEnabled(this)) {
-            PermissionStore.markAccessibilityGranted(this)
-        }
-        val file = pendingApk
-        if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
-            pendingApk = null
-            AppUpdater.installApk(this, file)
-        }
-        if (!didAutoCheck) {
-            didAutoCheck = true
-            checkForUpdate(manual = false)
+            refreshStatus()
+            renderInterval()
+            if (Settings.canDrawOverlays(this)) {
+                // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏
+                binding.root.post {
+                    if (isDestroyed || isFinishing) return@post
+                    if (Settings.canDrawOverlays(this)) {
+                        OverlayService.ensureRunning(this)
+                    }
+                    refreshStatus()
+                    binding.root.postDelayed({
+                        if (!isDestroyed) refreshStatus()
+                    }, 400)
+                }
+            }
+            if (SwipeAccessibilityService.isEnabled(this)) {
+                PermissionStore.markAccessibilityGranted(this)
+            }
+            val file = pendingApk
+            if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
+                pendingApk = null
+                AppUpdater.installApk(this, file)
+            }
+            if (!didAutoCheck) {
+                didAutoCheck = true
+                checkForUpdate(manual = false)
+            }
+        } catch (_: Exception) {
+            try {
+                refreshStatus()
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -193,12 +199,7 @@ class MainActivity : AppCompatActivity() {
     private fun launchOverlay() {
         if (!Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "请先允许显示悬浮窗", Toast.LENGTH_SHORT).show()
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName"),
-                ),
-            )
+            SettingsPages.openOverlay(this)
             return
         }
         if (OverlayService.isPanelVisible()) {
@@ -253,14 +254,10 @@ class MainActivity : AppCompatActivity() {
         // 每次 onResume 都请求会 pause/resume 死循环，状态栏会一直闪
         if (!PermissionStore.shouldAskNotification(this)) return
         PermissionStore.markNotificationAsked(this)
-        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    private fun maybeAskBatteryOnce() {
-        if (isIgnoringBattery() || !PermissionStore.shouldAskBattery(this)) return
-        if (!Settings.canDrawOverlays(this) || !SwipeAccessibilityService.isEnabled(this)) return
-        PermissionStore.markBatteryAsked(this)
-        requestUnrestrictedBattery()
+        try {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } catch (_: Exception) {
+        }
     }
 
     private fun requestUnrestrictedBattery() {
@@ -268,15 +265,16 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "电池限制已经关闭", Toast.LENGTH_SHORT).show()
             return
         }
-        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = Uri.parse("package:$packageName")
-        }
-        startActivity(intent)
+        SettingsPages.openBattery(this)
     }
 
     private fun isIgnoringBattery(): Boolean {
-        val pm = getSystemService(PowerManager::class.java)
-        return pm.isIgnoringBatteryOptimizations(packageName)
+        return try {
+            val pm = getSystemService(PowerManager::class.java) ?: return false
+            pm.isIgnoringBatteryOptimizations(packageName)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun color(id: Int): Int = ContextCompat.getColor(this, id)
@@ -378,7 +376,11 @@ class MainActivity : AppCompatActivity() {
         if (!AppUpdater.canInstallPackages(this)) {
             pendingApk = file
             Toast.makeText(this, "请允许「自动上滑」安装未知应用，然后返回", Toast.LENGTH_LONG).show()
-            unknownSourcesLauncher.launch(AppUpdater.installPermissionIntent(this))
+            try {
+                unknownSourcesLauncher.launch(AppUpdater.installPermissionIntent(this))
+            } catch (_: Exception) {
+                SettingsPages.openAppDetails(this)
+            }
             return
         }
         AppUpdater.installApk(this, file)

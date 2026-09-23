@@ -16,7 +16,10 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         if (Settings.canDrawOverlays(context)) {
-            OverlayService.start(context)
+            try {
+                OverlayService.start(context)
+            } catch (_: Exception) {
+            }
         }
     }
 }
