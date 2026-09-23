@@ -11,8 +11,8 @@ android {
         applicationId = "com.hy.autoswipe"
         minSdk = 24
         targetSdk = 32
-        versionCode = 9
-        versionName = "1.8"
+        versionCode = 10
+        versionName = "1.9"
     }
 
     buildTypes {

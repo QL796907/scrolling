@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.8",
+  "versionCode": 10,
+  "versionName": "1.9",
   "apkUrl": "https://github.com/QL796907/scrolling/releases/latest/download/autoswipe.apk",
-  "note": "工程目录更名为 scrolling，补充说明文档"
+  "note": "修复打开时顶部状态栏闪烁、权限按钮点了没反应或闪退；收起侧边栏后不会再自动弹出"
 }
