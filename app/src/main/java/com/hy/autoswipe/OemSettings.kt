@@ -8,6 +8,7 @@ import android.provider.Settings
 
 object OemSettings {
     fun openAutostart(context: Context) {
+        // 不要用 resolveActivity：Android 11+ 包可见性会让厂商页“找不到”，按钮等于没反应。
         val candidates = listOf(
             Intent().setComponent(
                 ComponentName(
@@ -65,10 +66,8 @@ object OemSettings {
         for (intent in candidates) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             try {
-                if (intent.resolveActivity(context.packageManager) != null) {
-                    context.startActivity(intent)
-                    return
-                }
+                context.startActivity(intent)
+                return
             } catch (_: Exception) {
             }
         }

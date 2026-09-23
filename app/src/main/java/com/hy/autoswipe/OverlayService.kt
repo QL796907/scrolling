@@ -42,6 +42,7 @@ class OverlayService : Service() {
     private var peeked = false
     private var panelAttached = false
     private var connecting = false
+    private var dragAccumX = 0
 
     private val tick = object : Runnable {
         override fun run() {
@@ -73,7 +74,10 @@ class OverlayService : Service() {
         createChannel()
         startInForeground()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        showOverlay()
+        // 用户点过「收起」后，进程被杀再拉起也不要自动把侧边栏弹回来
+        if (!wasHiddenByUser()) {
+            showOverlay()
+        }
         handler.post(watchdog)
     }
 
@@ -82,7 +86,8 @@ class OverlayService : Service() {
             ACTION_START -> startSwiping()
             ACTION_PAUSE -> pauseSwiping()
             ACTION_STOP, ACTION_HIDE -> hidePanel()
-            ACTION_SHOW, null -> showOverlay()
+            ACTION_SHOW -> showOverlay()
+            else -> if (!wasHiddenByUser()) showOverlay()
         }
         return START_STICKY
     }
@@ -91,7 +96,7 @@ class OverlayService : Service() {
         pauseSwiping()
         animator?.cancel()
         handler.removeCallbacks(watchdog)
-        hidePanel()
+        detachPanel()
         if (instance === this) instance = null
         super.onDestroy()
     }
@@ -108,12 +113,18 @@ class OverlayService : Service() {
         try {
             windowManager.addView(binding.root, params)
             panelAttached = true
+            setHiddenByUser(false)
             binding.root.post { applyDock(animate = false) }
         } catch (_: Exception) {
         }
     }
 
     fun hidePanel() {
+        setHiddenByUser(true)
+        detachPanel()
+    }
+
+    private fun detachPanel() {
         if (!panelAttached || !::binding.isInitialized) return
         try {
             windowManager.removeView(binding.root)
@@ -129,13 +140,18 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            // FLAG_LAYOUT_NO_LIMITS 会把窗口画进状态栏，MIUI 上时间/电量会不停闪
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = overlayStartX()
-            y = dp(220)
+            y = overlayStartY()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
+            }
         }
 
         binding.btnStart.setOnClickListener { startSwiping() }
@@ -143,8 +159,14 @@ class OverlayService : Service() {
 
         val drag = { dx: Int, dy: Int ->
             animator?.cancel()
-            params.x += dx
-            params.y = (params.y + dy).coerceIn(0, screenHeight() - binding.root.height.coerceAtLeast(dp(44)))
+            dragAccumX += dx
+            val minX = 0
+            val maxX = (screenWidth() - binding.root.width.coerceAtLeast(dp(16))).coerceAtLeast(0)
+            params.x = (params.x + dx).coerceIn(minX, maxX)
+            params.y = (params.y + dy).coerceIn(
+                statusBarInset(),
+                (screenHeight() - binding.root.height.coerceAtLeast(dp(44))).coerceAtLeast(statusBarInset()),
+            )
             try {
                 windowManager.updateViewLayout(binding.root, params)
             } catch (_: Exception) {
@@ -153,6 +175,7 @@ class OverlayService : Service() {
         val dragEnd = { moved: Boolean ->
             if (!moved && peeked) {
                 peeked = false
+                dragAccumX = 0
                 applyDock(animate = true)
             } else {
                 settleAfterDrag()
@@ -160,6 +183,7 @@ class OverlayService : Service() {
         }
 
         val panel = binding.panel
+        panel.onPointerDown = { dragAccumX = 0 }
         panel.onDrag = drag
         panel.onDragEnd = dragEnd
         enableArrowDrag(drag, dragEnd)
@@ -183,6 +207,7 @@ class OverlayService : Service() {
                     lastX = event.rawX
                     lastY = event.rawY
                     moved = false
+                    dragAccumX = 0
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -210,23 +235,10 @@ class OverlayService : Service() {
         val width = binding.root.width.takeIf { it > 0 } ?: dp(52)
         val center = params.x + width / 2
         dockRight = center >= screenW / 2
-        peeked = if (peeked) {
-            val pulledIn = if (dockRight) {
-                screenW - width - params.x > dp(18)
-            } else {
-                params.x > dp(18)
-            }
-            !pulledIn
-        } else {
-            val hidden = if (dockRight) {
-                (params.x + width - screenW).coerceAtLeast(0)
-            } else {
-                (-params.x).coerceAtLeast(0)
-            }
-            hidden > dp(8) ||
-                (dockRight && params.x > screenW - width / 2) ||
-                (!dockRight && params.x + width < width / 2)
-        }
+        // 不能再拖出屏幕外，改为：朝贴边方向多拖一段就收成箭头
+        val outward = if (dockRight) dragAccumX > dp(24) else dragAccumX < -dp(24)
+        peeked = outward
+        dragAccumX = 0
         applyDock(animate = true)
     }
 
@@ -247,7 +259,10 @@ class OverlayService : Service() {
             if (!panelAttached || !::binding.isInitialized) return@post
             val width = binding.root.width.takeIf { it > 0 } ?: if (peeked) dp(16) else dp(52)
             val targetX = if (dockRight) screenWidth() - width else 0
-            val targetY = params.y.coerceIn(0, (screenHeight() - binding.root.height).coerceAtLeast(0))
+            val targetY = params.y.coerceIn(
+                statusBarInset(),
+                (screenHeight() - binding.root.height).coerceAtLeast(statusBarInset()),
+            )
             moveTo(targetX, targetY, animate)
         }
     }
@@ -367,6 +382,14 @@ class OverlayService : Service() {
 
     private fun overlayStartX(): Int = screenWidth() - dp(60)
 
+    private fun overlayStartY(): Int = statusBarInset() + dp(180)
+
+    private fun statusBarInset(): Int {
+        val id = resources.getIdentifier("status_bar_height", "dimen", "android")
+        val bar = if (id > 0) resources.getDimensionPixelSize(id) else dp(24)
+        return bar + dp(8)
+    }
+
     private fun screenWidth(): Int = resources.displayMetrics.widthPixels
 
     private fun screenHeight(): Int = resources.displayMetrics.heightPixels
@@ -394,8 +417,13 @@ class OverlayService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel),
-            NotificationManager.IMPORTANCE_LOW,
-        )
+            NotificationManager.IMPORTANCE_MIN,
+        ).apply {
+            setShowBadge(false)
+            enableLights(false)
+            enableVibration(false)
+            setSound(null, null)
+        }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
@@ -438,6 +466,9 @@ class OverlayService : Service() {
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(0, "开始", start)
             .addAction(0, "暂停", pause)
             .addAction(0, "收起", stop)
@@ -460,26 +491,54 @@ class OverlayService : Service() {
         const val ACTION_STOP = "com.hy.autoswipe.STOP"
         const val ACTION_SHOW = "com.hy.autoswipe.SHOW"
         const val ACTION_HIDE = "com.hy.autoswipe.HIDE"
-        private const val CHANNEL_ID = "overlay"
+        private const val CHANNEL_ID = "overlay_quiet"
         private const val NOTIFY_ID = 1001
+        private const val PREFS = "overlay"
+        private const val KEY_HIDDEN = "panel_hidden"
 
         @Volatile
         var instance: OverlayService? = null
             private set
 
         fun start(context: Context) {
+            setHiddenPref(context, false)
             val intent = Intent(context, OverlayService::class.java).setAction(ACTION_SHOW)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            startServiceInternal(context, intent)
+        }
+
+        fun ensureRunning(context: Context) {
+            if (instance != null) return
+            startServiceInternal(context, Intent(context, OverlayService::class.java))
         }
 
         fun hide(context: Context) {
+            setHiddenPref(context, true)
             instance?.hidePanel()
         }
 
         fun isPanelVisible(): Boolean = instance?.panelAttached == true
+
+        private fun startServiceInternal(context: Context, intent: Intent) {
+            val appContext = context.applicationContext
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                appContext.startForegroundService(intent)
+            } else {
+                appContext.startService(intent)
+            }
+        }
+
+        private fun overlayPrefs(context: Context) =
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+        private fun setHiddenPref(context: Context, hidden: Boolean) {
+            overlayPrefs(context).edit().putBoolean(KEY_HIDDEN, hidden).apply()
+        }
+    }
+
+    private fun wasHiddenByUser(): Boolean =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HIDDEN, false)
+
+    private fun setHiddenByUser(hidden: Boolean) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_HIDDEN, hidden).apply()
     }
 }

@@ -33,7 +33,7 @@ class SwipeAccessibilityService : AccessibilityService() {
         }
         try {
             if (Settings.canDrawOverlays(this)) {
-                OverlayService.start(this)
+                OverlayService.ensureRunning(this)
             }
         } catch (_: Exception) {
         }

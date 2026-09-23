@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingApk: File? = null
     private var downloadDialog: AlertDialog? = null
     private val downloadCancelled = AtomicBoolean(false)
+    private val checkingUpdate = AtomicBoolean(false)
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -49,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SystemBars.lockLight(this)
 
         binding.btnRestricted.setOnClickListener {
             startActivity(
@@ -83,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnLaunch.setOnClickListener { launchOverlay() }
         binding.btnStop.setOnClickListener {
             OverlayService.hide(this)
-            refreshStatus()
+            binding.root.post { refreshStatus() }
         }
         binding.btnApplyInterval.setOnClickListener { applyInterval() }
         binding.btnManagePresets.setOnClickListener {
@@ -100,7 +102,17 @@ class MainActivity : AppCompatActivity() {
         refreshStatus()
         renderInterval()
         if (Settings.canDrawOverlays(this)) {
-            OverlayService.start(this)
+            // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏
+            binding.root.post {
+                if (isDestroyed || isFinishing) return@post
+                if (Settings.canDrawOverlays(this)) {
+                    OverlayService.ensureRunning(this)
+                }
+                refreshStatus()
+                binding.root.postDelayed({
+                    if (!isDestroyed) refreshStatus()
+                }, 400)
+            }
         }
         if (SwipeAccessibilityService.isEnabled(this)) {
             PermissionStore.markAccessibilityGranted(this)
@@ -189,15 +201,22 @@ class MainActivity : AppCompatActivity() {
             )
             return
         }
+        if (OverlayService.isPanelVisible()) {
+            refreshStatus()
+            return
+        }
         OverlayService.start(this)
-        Toast.makeText(this, "侧边栏已打开。点「开」开始上滑，往外拖可以收起", Toast.LENGTH_LONG).show()
-        refreshStatus()
+        Toast.makeText(this, "侧边栏已打开。点「开」开始上滑，往外拖可以收进去", Toast.LENGTH_LONG).show()
+        binding.root.postDelayed({
+            if (!isDestroyed) refreshStatus()
+        }, 400)
     }
 
     private fun refreshStatus() {
         val accessibilityOn = SwipeAccessibilityService.isEnabled(this)
         val overlayOn = Settings.canDrawOverlays(this)
         val overlayRunning = OverlayService.isPanelVisible()
+        val batteryOff = isIgnoringBattery()
 
         if (accessibilityOn) PermissionStore.markAccessibilityGranted(this)
 
@@ -211,10 +230,11 @@ class MainActivity : AppCompatActivity() {
         binding.statusOverlay.setTextColor(color(if (overlayOn) R.color.success else R.color.warn))
         binding.btnOverlay.text = if (overlayOn) "已完成" else "去允许"
 
-        binding.statusBattery.text = if (isIgnoringBattery()) "无限制" else "建议关闭限制"
-        binding.statusBattery.setTextColor(color(if (isIgnoringBattery()) R.color.success else R.color.ink_muted))
+        binding.statusBattery.text = if (batteryOff) "无限制" else "建议关闭限制"
+        binding.statusBattery.setTextColor(color(if (batteryOff) R.color.success else R.color.ink_muted))
+        binding.btnBattery.text = if (batteryOff) "电池限制已关闭" else "关闭电池限制"
 
-        binding.btnLaunch.isEnabled = overlayOn
+        binding.btnLaunch.isEnabled = overlayOn && !overlayRunning
         binding.btnLaunch.text = when {
             overlayRunning -> "侧边栏已显示"
             overlayOn -> "显示侧边栏"
@@ -229,9 +249,11 @@ class MainActivity : AppCompatActivity() {
             this,
             Manifest.permission.POST_NOTIFICATIONS,
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        if (granted) return
+        // 每次 onResume 都请求会 pause/resume 死循环，状态栏会一直闪
+        if (!PermissionStore.shouldAskNotification(this)) return
+        PermissionStore.markNotificationAsked(this)
+        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun maybeAskBatteryOnce() {
@@ -260,21 +282,33 @@ class MainActivity : AppCompatActivity() {
     private fun color(id: Int): Int = ContextCompat.getColor(this, id)
 
     private fun checkForUpdate(manual: Boolean) {
+        if (!checkingUpdate.compareAndSet(false, true)) {
+            if (manual) {
+                Toast.makeText(this, "正在检查更新", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         if (manual) {
             binding.btnCheckUpdate.isEnabled = false
             binding.btnCheckUpdate.text = "正在检查…"
         }
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { AppUpdater.check(this@MainActivity) }
-            binding.btnCheckUpdate.isEnabled = true
-            binding.btnCheckUpdate.text = "检查更新"
-            when (result) {
-                is UpdateCheckResult.Available -> showUpdateDialog(result.info)
-                UpdateCheckResult.UpToDate -> if (manual) {
-                    Toast.makeText(this@MainActivity, "已经是最新版本", Toast.LENGTH_SHORT).show()
+            try {
+                val result = withContext(Dispatchers.IO) { AppUpdater.check(this@MainActivity) }
+                when (result) {
+                    is UpdateCheckResult.Available -> showUpdateDialog(result.info)
+                    UpdateCheckResult.UpToDate -> if (manual) {
+                        Toast.makeText(this@MainActivity, "已经是最新版本", Toast.LENGTH_SHORT).show()
+                    }
+                    is UpdateCheckResult.Failed -> if (manual) {
+                        Toast.makeText(this@MainActivity, result.message, Toast.LENGTH_LONG).show()
+                    }
                 }
-                is UpdateCheckResult.Failed -> if (manual) {
-                    Toast.makeText(this@MainActivity, result.message, Toast.LENGTH_LONG).show()
+            } finally {
+                checkingUpdate.set(false)
+                if (!isDestroyed) {
+                    binding.btnCheckUpdate.isEnabled = true
+                    binding.btnCheckUpdate.text = "检查更新"
                 }
             }
         }

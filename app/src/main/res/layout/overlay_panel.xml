@@ -46,7 +46,9 @@
             android:gravity="center"
             android:text="停"
             android:textColor="@color/ink_muted"
-            android:textSize="10sp" />
+            android:textSize="10sp"
+            android:minWidth="36dp"
+            android:minHeight="14dp" />
     </com.hy.autoswipe.OverlayPanelView>
 
     <TextView

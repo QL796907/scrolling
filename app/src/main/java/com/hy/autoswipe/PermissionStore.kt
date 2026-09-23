@@ -9,6 +9,7 @@ object PermissionStore {
     private const val PREFS = "permissions"
     private const val KEY_A11Y = "accessibility_granted"
     private const val KEY_BATTERY_ASKED = "battery_asked"
+    private const val KEY_NOTIF_ASKED = "notification_asked"
 
     fun markAccessibilityGranted(context: Context) {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -29,6 +30,17 @@ object PermissionStore {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_BATTERY_ASKED, true)
+            .apply()
+    }
+
+    fun shouldAskNotification(context: Context): Boolean =
+        !context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_NOTIF_ASKED, false)
+
+    fun markNotificationAsked(context: Context) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_NOTIF_ASKED, true)
             .apply()
     }
 

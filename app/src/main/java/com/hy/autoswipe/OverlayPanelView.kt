@@ -15,6 +15,7 @@ class OverlayPanelView @JvmOverloads constructor(
     var interceptAllTouches: Boolean = false
     var onDrag: ((dx: Int, dy: Int) -> Unit)? = null
     var onDragEnd: ((moved: Boolean) -> Unit)? = null
+    var onPointerDown: (() -> Unit)? = null
 
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
@@ -31,6 +32,7 @@ class OverlayPanelView @JvmOverloads constructor(
                 lastX = ev.rawX
                 lastY = ev.rawY
                 dragging = false
+                onPointerDown?.invoke()
                 if (interceptAllTouches) return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -51,6 +53,7 @@ class OverlayPanelView @JvmOverloads constructor(
                 lastX = event.rawX
                 lastY = event.rawY
                 dragging = false
+                onPointerDown?.invoke()
                 return true
             }
             MotionEvent.ACTION_MOVE -> {

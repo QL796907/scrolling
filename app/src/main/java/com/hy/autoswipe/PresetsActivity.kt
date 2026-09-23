@@ -18,6 +18,7 @@ class PresetsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityPresetsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SystemBars.lockLight(this)
         store = IntervalStore(this)
 
         binding.btnBack.setOnClickListener { finish() }
