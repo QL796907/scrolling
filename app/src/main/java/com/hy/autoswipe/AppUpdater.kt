@@ -13,12 +13,15 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.UnknownHostException
+import java.security.MessageDigest
 
 data class UpdateInfo(
     val versionCode: Int,
     val versionName: String,
     val apkUrl: String,
     val note: String,
+    val mirrors: List<String> = emptyList(),
+    val sha256: String = "",
 )
 
 sealed class UpdateCheckResult {
@@ -36,6 +39,13 @@ object AppUpdater {
         "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
     private const val USER_AGENT = "AutoSwipe-Updater"
     private const val PROVIDER = ".fileprovider"
+
+    // 公开加速站会换域名、也会挂；只作 GitHub 失败后的备选，不把 Token 发给它们。
+    private val GITHUB_PROXY_PREFIXES = listOf(
+        "https://ghfast.top/",
+        "https://ghproxy.net/",
+        "https://mirror.ghproxy.com/",
+    )
 
     fun currentVersionCode(context: Context): Int {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -69,9 +79,13 @@ object AppUpdater {
         return try {
             val token = githubToken(context)
             val info = if (token.isNullOrBlank()) {
-                parseUpdateInfo(httpGet(VERSION_JSON_URL, null))
+                parseUpdateInfo(httpGetFirst(candidateUrls(VERSION_JSON_URL), null))
             } else {
-                fetchViaApi(token)
+                try {
+                    fetchViaApi(token)
+                } catch (_: Exception) {
+                    parseUpdateInfo(httpGetFirst(candidateUrls(VERSION_JSON_URL), token))
+                }
             }
             if (info.versionCode > currentVersionCode(context)) {
                 UpdateCheckResult.Available(info)
@@ -91,8 +105,36 @@ object AppUpdater {
         onProgress: (Int) -> Unit,
     ) {
         val token = githubToken(context)
-        val url = if (token.isNullOrBlank()) info.apkUrl else resolveAssetApiUrl(token, info)
-        downloadTo(url, dest, token, cancelled, onProgress)
+        val primary = if (token.isNullOrBlank()) {
+            info.apkUrl
+        } else {
+            try {
+                resolveAssetApiUrl(token, info)
+            } catch (_: Exception) {
+                info.apkUrl
+            }
+        }
+        var last: Exception? = null
+        for (url in candidateUrls(primary, info.mirrors)) {
+            try {
+                onProgress(0)
+                downloadTo(url, dest, tokenFor(url, token), cancelled, onProgress)
+                val expected = info.sha256
+                if (expected.isNotBlank() && !sha256Hex(dest).equals(expected, ignoreCase = true)) {
+                    dest.delete()
+                    last = IllegalStateException("bad-sha256")
+                    continue
+                }
+                return
+            } catch (error: InterruptedException) {
+                dest.delete()
+                throw error
+            } catch (error: Exception) {
+                dest.delete()
+                last = error
+            }
+        }
+        throw last ?: IllegalStateException("all-sources-failed")
     }
 
     fun installApk(context: Context, file: File) {
@@ -156,12 +198,61 @@ object AppUpdater {
             throw IllegalStateException("private-or-html")
         }
         val json = JSONObject(trimmed)
+        val mirrors = mutableListOf<String>()
+        json.optJSONArray("apkMirrors")?.let { array ->
+            for (index in 0 until array.length()) {
+                val item = array.optString(index).trim()
+                if (item.isNotBlank()) mirrors += item
+            }
+        }
         return UpdateInfo(
             versionCode = json.getInt("versionCode"),
             versionName = json.getString("versionName"),
             apkUrl = json.getString("apkUrl"),
             note = json.optString("note").trim(),
+            mirrors = mirrors,
+            sha256 = json.optString("apkSha256").trim(),
         )
+    }
+
+    /** GitHub 官方在前，自己的 apkMirrors 其次，公开加速站最后。 */
+    internal fun candidateUrls(primary: String, extras: List<String> = emptyList()): List<String> {
+        val urls = LinkedHashSet<String>()
+        if (primary.isNotBlank()) urls += primary
+        extras.forEach { item -> if (item.isNotBlank()) urls += item }
+        val wrap = (listOf(primary) + extras).filter { source ->
+            source.contains("github.com", ignoreCase = true) ||
+                source.contains("githubusercontent.com", ignoreCase = true)
+        }
+        for (source in wrap) {
+            for (prefix in GITHUB_PROXY_PREFIXES) {
+                if (source.startsWith(prefix)) continue
+                urls += prefix.trimEnd('/') + "/" + source
+            }
+        }
+        return urls.toList()
+    }
+
+    private fun httpGetFirst(urls: List<String>, token: String?, accept: String = "application/json"): String {
+        var last: Exception? = null
+        for (url in urls) {
+            try {
+                return httpGet(url, tokenFor(url, token), accept)
+            } catch (error: Exception) {
+                last = error
+            }
+        }
+        throw last ?: IllegalStateException("all-sources-failed")
+    }
+
+    private fun tokenFor(url: String, token: String?): String? {
+        if (token.isNullOrBlank()) return null
+        val host = try {
+            URL(url).host
+        } catch (_: Exception) {
+            return null
+        }
+        return if (host == "github.com" || host.endsWith(".github.com")) token else null
     }
 
     private fun downloadTo(
@@ -236,7 +327,7 @@ object AppUpdater {
             val host = URL(current).host
             val connection = (URL(current).openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = false
-                connectTimeout = 15_000
+                connectTimeout = 12_000
                 readTimeout = 60_000
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept", accept)
@@ -259,12 +350,27 @@ object AppUpdater {
         throw IllegalStateException("http-redirect")
     }
 
+    private fun sha256Hex(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(16 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count <= 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
+
     fun describeError(error: Throwable): String {
         val text = error.message.orEmpty()
         return when {
             error is InterruptedException -> "已取消下载"
-            error is UnknownHostException || error is SocketTimeoutException ->
-                "连不上 GitHub。请确认手机网络能打开 GitHub。"
+            text.contains("bad-sha256") -> "下载的安装包校验失败，已取消安装"
+            error is UnknownHostException || error is SocketTimeoutException ||
+                text.contains("all-sources-failed") ->
+                "GitHub 和国内镜像都连不上，请稍后再试"
             text.contains("http-401") || text.contains("http-403") || text.contains("private-or-html") ->
                 "仓库是私有的。请把 GitHub 仓库设为 Public，或在 strings.xml 填入 github_token。"
             text.contains("http-404") || text.contains("missing-") ->

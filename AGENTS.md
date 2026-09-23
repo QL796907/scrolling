@@ -22,5 +22,7 @@
 4. 第一次发版写完整 README；之后每次发版只更新 README 里有变化的部分
 5. GitHub Release 同时挂 `autoswipe.apk` 和 `version.json`
 
+检查更新先走 GitHub，失败再试 ghfast / ghproxy 等国内加速。`version.json` 可加 `apkMirrors`（自己的国内地址）和 `apkSha256`。
+
 检查更新地址：`https://github.com/QL796907/scrolling/releases/latest/download/version.json`  
 仓库需 Public，手机才能不登录下载。
