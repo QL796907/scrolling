@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "1.9",
+  "versionCode": 11,
+  "versionName": "1.10",
   "apkUrl": "https://github.com/QL796907/scrolling/releases/latest/download/autoswipe.apk",
-  "note": "修复打开时顶部状态栏闪烁、权限按钮点了没反应或闪退；收起侧边栏后不会再自动弹出"
+  "note": "检查更新可勾选「使用镜像下载」（默认开），经 gh.4o.pw 加速 GitHub 文件。说明：https://gh.4o.pw/docs"
 }

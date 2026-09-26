@@ -4,7 +4,7 @@
 
 - 本地目录：`scrolling`
 - 包名：`com.hy.autoswipe`（不要随文件夹改名，否则手机无法覆盖安装）
-- 版本：1.9（`versionCode` 10）
+- 版本：1.10（`versionCode` 11）
 - 仓库：https://github.com/QL796907/scrolling
 
 ## 构建
