@@ -35,17 +35,15 @@ object AppUpdater {
     const val GITHUB_REPO = "scrolling"
     const val VERSION_JSON_URL =
         "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest/download/version.json"
+    const val MIRROR_DOCS_URL = "https://gh.4o.pw/docs"
+    // 用法见 https://gh.4o.pw/docs ：前缀 + 完整 GitHub HTTPS 地址
+    private const val MIRROR_PREFIX = "https://gh.4o.pw/"
     private const val LATEST_API =
         "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
     private const val USER_AGENT = "AutoSwipe-Updater"
     private const val PROVIDER = ".fileprovider"
-
-    // 公开加速站会换域名、也会挂；只作 GitHub 失败后的备选，不把 Token 发给它们。
-    private val GITHUB_PROXY_PREFIXES = listOf(
-        "https://ghfast.top/",
-        "https://ghproxy.net/",
-        "https://mirror.ghproxy.com/",
-    )
+    private const val PREFS = "update"
+    private const val KEY_USE_MIRROR = "use_github_mirror"
 
     fun currentVersionCode(context: Context): Int {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -79,12 +77,14 @@ object AppUpdater {
         return try {
             val token = githubToken(context)
             val info = if (token.isNullOrBlank()) {
-                parseUpdateInfo(httpGetFirst(candidateUrls(VERSION_JSON_URL), null))
+                parseUpdateInfo(httpGetFirst(candidateUrls(VERSION_JSON_URL, useMirror = useMirror(context)), null))
             } else {
                 try {
                     fetchViaApi(token)
                 } catch (_: Exception) {
-                    parseUpdateInfo(httpGetFirst(candidateUrls(VERSION_JSON_URL), token))
+                    parseUpdateInfo(
+                        httpGetFirst(candidateUrls(VERSION_JSON_URL, useMirror = useMirror(context)), token),
+                    )
                 }
             }
             if (info.versionCode > currentVersionCode(context)) {
@@ -115,7 +115,7 @@ object AppUpdater {
             }
         }
         var last: Exception? = null
-        for (url in candidateUrls(primary, info.mirrors)) {
+        for (url in candidateUrls(primary, info.mirrors, useMirror(context))) {
             try {
                 onProgress(0)
                 downloadTo(url, dest, tokenFor(url, token), cancelled, onProgress)
@@ -215,22 +215,40 @@ object AppUpdater {
         )
     }
 
-    /** GitHub 官方在前，自己的 apkMirrors 其次，公开加速站最后。 */
-    internal fun candidateUrls(primary: String, extras: List<String> = emptyList()): List<String> {
+    fun useMirror(context: Context): Boolean =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_USE_MIRROR, true)
+
+    fun setUseMirror(context: Context, enabled: Boolean) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_USE_MIRROR, enabled)
+            .apply()
+    }
+
+    /** GitHub 镜像在前（若勾选），官方与 apkMirrors 随后。Token 不会发给镜像。 */
+    internal fun candidateUrls(
+        primary: String,
+        extras: List<String> = emptyList(),
+        useMirror: Boolean = true,
+    ): List<String> {
         val urls = LinkedHashSet<String>()
+        val githubSources = (listOf(primary) + extras).filter { isGithubFileUrl(it) }
+        if (useMirror) {
+            githubSources.forEach { source -> urls += wrapMirror(source) }
+        }
         if (primary.isNotBlank()) urls += primary
         extras.forEach { item -> if (item.isNotBlank()) urls += item }
-        val wrap = (listOf(primary) + extras).filter { source ->
-            source.contains("github.com", ignoreCase = true) ||
-                source.contains("githubusercontent.com", ignoreCase = true)
-        }
-        for (source in wrap) {
-            for (prefix in GITHUB_PROXY_PREFIXES) {
-                if (source.startsWith(prefix)) continue
-                urls += prefix.trimEnd('/') + "/" + source
-            }
-        }
         return urls.toList()
+    }
+
+    private fun isGithubFileUrl(url: String): Boolean =
+        url.contains("github.com", ignoreCase = true) ||
+            url.contains("githubusercontent.com", ignoreCase = true)
+
+    private fun wrapMirror(url: String): String {
+        if (url.startsWith(MIRROR_PREFIX)) return url
+        return MIRROR_PREFIX + url
     }
 
     private fun httpGetFirst(urls: List<String>, token: String?, accept: String = "application/json"): String {
@@ -370,7 +388,7 @@ object AppUpdater {
             text.contains("bad-sha256") -> "下载的安装包校验失败，已取消安装"
             error is UnknownHostException || error is SocketTimeoutException ||
                 text.contains("all-sources-failed") ->
-                "GitHub 和国内镜像都连不上，请稍后再试"
+                "GitHub 和镜像都连不上，请稍后再试，或改一下「使用镜像下载」"
             text.contains("http-401") || text.contains("http-403") || text.contains("private-or-html") ->
                 "仓库是私有的。请把 GitHub 仓库设为 Public，或在 strings.xml 填入 github_token。"
             text.contains("http-404") || text.contains("missing-") ->

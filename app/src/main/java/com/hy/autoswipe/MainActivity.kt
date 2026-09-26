@@ -90,6 +90,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.btnCheckUpdate.setOnClickListener { checkForUpdate(manual = true) }
+        binding.checkUseMirror.isChecked = AppUpdater.useMirror(this)
+        binding.checkUseMirror.setOnCheckedChangeListener { _, checked ->
+            AppUpdater.setUseMirror(this, checked)
+        }
+        binding.textMirrorHelp.setOnClickListener { openMirrorDocs() }
         renderAppVersion()
     }
 
@@ -278,6 +283,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun color(id: Int): Int = ContextCompat.getColor(this, id)
+
+    private fun openMirrorDocs() {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(AppUpdater.MIRROR_DOCS_URL)))
+        } catch (_: Exception) {
+            Toast.makeText(this, "无法打开镜像说明", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private fun checkForUpdate(manual: Boolean) {
         if (!checkingUpdate.compareAndSet(false, true)) {

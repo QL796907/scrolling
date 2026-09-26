@@ -310,12 +310,35 @@
                 android:textColor="@color/ink_muted"
                 android:textSize="13sp" />
 
+            <CheckBox
+                android:id="@+id/checkUseMirror"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:buttonTint="@color/accent"
+                android:checked="true"
+                android:text="使用镜像下载"
+                android:textColor="@color/ink"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/textMirrorHelp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp"
+                android:text="镜像说明"
+                android:textColor="@color/accent"
+                android:textSize="13sp" />
+
             <Button
                 android:id="@+id/btnCheckUpdate"
                 style="@style/Widget.AutoSwipe.Button.Secondary"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="8dp"
                 android:text="检查更新" />
         </LinearLayout>
 
