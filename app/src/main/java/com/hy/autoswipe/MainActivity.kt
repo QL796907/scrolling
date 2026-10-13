@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnAutostart.setOnClickListener {
             if (OemSettings.openAutostart(this)) {
-                Toast.makeText(this, "请允许「自动上滑」自启动和后台运行", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "请允许「自动上滑」在后台运行。从最近任务划掉后，应用不会再自己打开", Toast.LENGTH_LONG).show()
             }
         }
         binding.btnLaunch.setOnClickListener { launchOverlay() }
@@ -107,10 +107,12 @@ class MainActivity : AppCompatActivity() {
             refreshStatus()
             renderInterval()
             if (Settings.canDrawOverlays(this)) {
-                // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏
+                // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏。
+                // 用户自己打开应用才算继续用，清掉「从最近任务划掉」的标记。
                 binding.root.post {
                     if (isDestroyed || isFinishing) return@post
                     if (Settings.canDrawOverlays(this)) {
+                        OverlayService.noteUserOpened(this)
                         OverlayService.ensureRunning(this)
                     }
                     refreshStatus()
