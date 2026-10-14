@@ -18,7 +18,6 @@ class SwipeAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        PermissionStore.markAccessibilityGranted(this)
         try {
             serviceInfo = (serviceInfo ?: AccessibilityServiceInfo()).apply {
                 eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
