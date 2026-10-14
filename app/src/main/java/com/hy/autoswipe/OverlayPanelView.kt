@@ -12,7 +12,6 @@ class OverlayPanelView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : LinearLayout(context, attrs) {
 
-    var interceptAllTouches: Boolean = false
     var onDrag: ((dx: Int, dy: Int) -> Unit)? = null
     var onDragEnd: ((moved: Boolean) -> Unit)? = null
     var onPointerDown: (() -> Unit)? = null
@@ -33,7 +32,6 @@ class OverlayPanelView @JvmOverloads constructor(
                 lastY = ev.rawY
                 dragging = false
                 onPointerDown?.invoke()
-                if (interceptAllTouches) return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (hypot((ev.rawX - downX).toDouble(), (ev.rawY - downY).toDouble()) > slop) {
