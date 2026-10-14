@@ -177,7 +177,7 @@ object AppUpdater {
         if (versionJsonUrl.isNullOrBlank()) {
             throw IllegalStateException("missing-version-json")
         }
-        val info = parseUpdateInfo(httpGetAsset(versionJsonUrl, token, asText = true))
+        val info = parseUpdateInfo(httpGet(versionJsonUrl, token, "application/octet-stream"))
         val apkUrl = apkApiUrl?.takeIf { it.isNotBlank() } ?: info.apkUrl.ifBlank { apkBrowserUrl.orEmpty() }
         if (apkUrl.isBlank()) throw IllegalStateException("missing-apk")
         return info.copy(apkUrl = apkUrl)
@@ -270,7 +270,7 @@ object AppUpdater {
         } catch (_: Exception) {
             return null
         }
-        return if (host == "github.com" || host.endsWith(".github.com")) token else null
+        return if (isGithubTokenHost(host)) token else null
     }
 
     private fun downloadTo(
@@ -327,15 +327,8 @@ object AppUpdater {
         }
     }
 
-    private fun httpGetAsset(url: String, token: String, asText: Boolean): String {
-        val accept = if (asText) "application/octet-stream" else "*/*"
-        val connection = openFollowing(url, token, accept)
-        try {
-            return connection.inputStream.bufferedReader().readText()
-        } finally {
-            connection.disconnect()
-        }
-    }
+    private fun isGithubTokenHost(host: String): Boolean =
+        host == "github.com" || host.endsWith(".github.com")
 
     private fun openFollowing(url: String, token: String?, accept: String): HttpURLConnection {
         var current = url
@@ -349,7 +342,7 @@ object AppUpdater {
                 readTimeout = 60_000
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept", accept)
-                if (!token.isNullOrBlank() && host.endsWith("github.com")) {
+                if (!token.isNullOrBlank() && isGithubTokenHost(host)) {
                     setRequestProperty("Authorization", "Bearer $token")
                 }
             }
