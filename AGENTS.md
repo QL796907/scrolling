@@ -9,7 +9,7 @@
 
 ## 构建
 
-- Android Studio Run，或仓库根目录执行 `build-apk.ps1`
+- Android Studio Run，仓库根目录 `./gradlew assembleDebug`，或 `build-apk.ps1`（调用 `gradlew.bat`）
 - 需要 JDK 17 与 Android SDK
 
 ## 发版
