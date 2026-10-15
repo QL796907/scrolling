@@ -2,6 +2,7 @@ package com.hy.autoswipe
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -156,5 +157,22 @@ class IntervalStore(context: Context) {
             min = DEFAULT_MIN,
             max = DEFAULT_MAX,
         )
+
+        /** 主界面和选项页共用。不合格时弹出原来的提示并返回 null。 */
+        fun checkInterval(context: Context, min: Int?, max: Int?): Pair<Int, Int>? {
+            if (min == null || max == null) {
+                Toast.makeText(context, "请填写最小秒和最大秒", Toast.LENGTH_SHORT).show()
+                return null
+            }
+            if (min < 1 || max < 1) {
+                Toast.makeText(context, "秒数至少为 1", Toast.LENGTH_SHORT).show()
+                return null
+            }
+            if (max < min) {
+                Toast.makeText(context, "最大秒不能小于最小秒", Toast.LENGTH_SHORT).show()
+                return null
+            }
+            return min to max
+        }
     }
 }

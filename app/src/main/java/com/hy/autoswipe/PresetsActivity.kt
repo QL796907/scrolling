@@ -69,20 +69,11 @@ class PresetsActivity : AppCompatActivity() {
     }
 
     private fun parseInputs(): Triple<String, Int, Int>? {
-        val min = binding.inputMin.text.toString().toIntOrNull()
-        val max = binding.inputMax.text.toString().toIntOrNull()
-        if (min == null || max == null) {
-            Toast.makeText(this, "请填写最小秒和最大秒", Toast.LENGTH_SHORT).show()
-            return null
-        }
-        if (min < 1 || max < 1) {
-            Toast.makeText(this, "秒数至少为 1", Toast.LENGTH_SHORT).show()
-            return null
-        }
-        if (max < min) {
-            Toast.makeText(this, "最大秒不能小于最小秒", Toast.LENGTH_SHORT).show()
-            return null
-        }
+        val (min, max) = IntervalStore.checkInterval(
+            this,
+            binding.inputMin.text.toString().toIntOrNull(),
+            binding.inputMax.text.toString().toIntOrNull(),
+        ) ?: return null
         return Triple(binding.inputName.text.toString(), min, max)
     }
 

@@ -147,20 +147,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyInterval() {
-        val min = binding.inputMin.text.toString().toIntOrNull()
-        val max = binding.inputMax.text.toString().toIntOrNull()
-        if (min == null || max == null) {
-            Toast.makeText(this, "请填写最小秒和最大秒", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (min < 1 || max < 1) {
-            Toast.makeText(this, "秒数至少为 1", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (max < min) {
-            Toast.makeText(this, "最大秒不能小于最小秒", Toast.LENGTH_SHORT).show()
-            return
-        }
+        val (min, max) = IntervalStore.checkInterval(
+            this,
+            binding.inputMin.text.toString().toIntOrNull(),
+            binding.inputMax.text.toString().toIntOrNull(),
+        ) ?: return
         val store = IntervalStore(this)
         store.setCurrent(min, max)
         store.markCustomSelected()
