@@ -58,15 +58,6 @@ class OverlayService : Service() {
         }
     }
 
-    private val watchdog = object : Runnable {
-        override fun run() {
-            if (SwipeAccessibilityService.isEnabled(this@OverlayService)) {
-                PermissionStore.markAccessibilityGranted(this@OverlayService)
-            }
-            handler.postDelayed(this, 15_000L)
-        }
-    }
-
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -91,7 +82,6 @@ class OverlayService : Service() {
             if (!wasHiddenByUser()) {
                 showOverlay()
             }
-            handler.post(watchdog)
         } catch (_: Exception) {
         }
     }
@@ -134,7 +124,6 @@ class OverlayService : Service() {
     override fun onDestroy() {
         pauseSwiping()
         animator?.cancel()
-        handler.removeCallbacks(watchdog)
         detachPanel()
         if (instance === this) instance = null
         super.onDestroy()
@@ -387,7 +376,6 @@ class OverlayService : Service() {
 
     private fun beginRun() {
         if (running) return
-        PermissionStore.markAccessibilityGranted(this)
         running = true
         remainingSeconds = nextInterval()
         handler.removeCallbacks(tick)

@@ -121,9 +121,6 @@ class MainActivity : AppCompatActivity() {
                     }, 400)
                 }
             }
-            if (SwipeAccessibilityService.isEnabled(this)) {
-                PermissionStore.markAccessibilityGranted(this)
-            }
             val file = pendingApk
             if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
                 pendingApk = null
@@ -216,8 +213,6 @@ class MainActivity : AppCompatActivity() {
         val overlayOn = Settings.canDrawOverlays(this)
         val overlayRunning = OverlayService.isPanelVisible()
         val batteryOff = isIgnoringBattery()
-
-        if (accessibilityOn) PermissionStore.markAccessibilityGranted(this)
 
         binding.statusAccessibility.text = if (accessibilityOn) "已开启" else "未开启"
         binding.statusAccessibility.setTextColor(color(if (accessibilityOn) R.color.success else R.color.warn))
