@@ -32,9 +32,9 @@ class IntervalStore(context: Context) {
         }
     }
 
-    fun currentMin(): Int = prefs.getInt(KEY_MIN, DEFAULT_MIN).coerceAtLeast(1)
+    private fun currentMin(): Int = prefs.getInt(KEY_MIN, DEFAULT_MIN).coerceAtLeast(1)
 
-    fun currentMax(): Int = prefs.getInt(KEY_MAX, DEFAULT_MAX).coerceAtLeast(currentMin())
+    private fun currentMax(): Int = prefs.getInt(KEY_MAX, DEFAULT_MAX).coerceAtLeast(currentMin())
 
     fun currentRange(): Pair<Int, Int> {
         val min = currentMin()
@@ -43,15 +43,13 @@ class IntervalStore(context: Context) {
     }
 
     fun setCurrent(min: Int, max: Int) {
-        val safeMin = min.coerceIn(1, 3600)
-        val safeMax = max.coerceIn(safeMin, 3600)
         prefs.edit()
-            .putInt(KEY_MIN, safeMin)
-            .putInt(KEY_MAX, safeMax)
+            .putInt(KEY_MIN, min)
+            .putInt(KEY_MAX, max)
             .apply()
     }
 
-    fun selectedId(): String? = prefs.getString(KEY_SELECTED, DEFAULT_ID)
+    fun selectedId(): String? = prefs.getString(KEY_SELECTED, null)
 
     fun presets(): List<IntervalPreset> {
         val raw = prefs.getString(KEY_PRESETS, null)
@@ -75,13 +73,11 @@ class IntervalStore(context: Context) {
     }
 
     fun addPreset(name: String, min: Int, max: Int): IntervalPreset {
-        val safeMin = min.coerceIn(1, 3600)
-        val safeMax = max.coerceIn(safeMin, 3600)
         val preset = IntervalPreset(
             id = UUID.randomUUID().toString(),
-            name = name.trim().ifBlank { "${safeMin}–${safeMax}秒" },
-            min = safeMin,
-            max = safeMax,
+            name = name.trim().ifBlank { "${min}–${max}秒" },
+            min = min,
+            max = max,
         )
         savePresets(presets() + preset)
         return preset
@@ -97,13 +93,11 @@ class IntervalStore(context: Context) {
     }
 
     fun updatePreset(id: String, name: String, min: Int, max: Int): IntervalPreset? {
-        val safeMin = min.coerceIn(1, 3600)
-        val safeMax = max.coerceIn(safeMin, 3600)
         val updated = IntervalPreset(
             id = id,
-            name = name.trim().ifBlank { "${safeMin}–${safeMax}秒" },
-            min = safeMin,
-            max = safeMax,
+            name = name.trim().ifBlank { "${min}–${max}秒" },
+            min = min,
+            max = max,
         )
         val list = presets().map { if (it.id == id) updated else it }
         if (list.none { it.id == id }) return null
@@ -158,14 +152,13 @@ class IntervalStore(context: Context) {
             max = DEFAULT_MAX,
         )
 
-        /** 主界面和选项页共用。不合格时弹出原来的提示并返回 null。 */
         fun checkInterval(context: Context, min: Int?, max: Int?): Pair<Int, Int>? {
             if (min == null || max == null) {
                 Toast.makeText(context, "请填写最小秒和最大秒", Toast.LENGTH_SHORT).show()
                 return null
             }
-            if (min < 1 || max < 1) {
-                Toast.makeText(context, "秒数至少为 1", Toast.LENGTH_SHORT).show()
+            if (min !in 1..3600 || max !in 1..3600) {
+                Toast.makeText(context, "秒数须在 1–3600 之间", Toast.LENGTH_SHORT).show()
                 return null
             }
             if (max < min) {

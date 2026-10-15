@@ -154,7 +154,8 @@ class MainActivity : AppCompatActivity() {
         store.markCustomSelected()
         OverlayService.instance?.reloadInterval()
         renderInterval()
-        Toast.makeText(this, "已设为 $min–${max} 秒，滑一下歇一下", Toast.LENGTH_SHORT).show()
+        val (storedMin, storedMax) = store.currentRange()
+        Toast.makeText(this, "已设为 $storedMin–${storedMax} 秒，滑一下歇一下", Toast.LENGTH_SHORT).show()
     }
 
     private fun renderInterval() {
