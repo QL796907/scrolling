@@ -18,18 +18,6 @@ class SwipeAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        try {
-            serviceInfo = (serviceInfo ?: AccessibilityServiceInfo()).apply {
-                eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                    AccessibilityEvent.TYPE_WINDOWS_CHANGED
-                feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-                notificationTimeout = 100
-                flags = flags or
-                    AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
-                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-            }
-        } catch (_: Exception) {
-        }
         // 不在这里拉起悬浮窗。从最近任务划掉后进程常被无障碍重新拉起，
         // 若再 ensureRunning，侧边栏会自己出现。
     }
