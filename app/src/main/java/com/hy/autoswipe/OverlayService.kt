@@ -100,7 +100,7 @@ class OverlayService : Service() {
             when (intent?.action) {
                 ACTION_START -> startSwiping()
                 ACTION_PAUSE -> pauseSwiping()
-                ACTION_STOP, ACTION_HIDE -> hidePanel()
+                ACTION_STOP -> hidePanel()
                 ACTION_SHOW -> showOverlay()
                 else -> if (!wasHiddenByUser()) showOverlay()
             }
@@ -286,7 +286,6 @@ class OverlayService : Service() {
         binding.edgeArrow.setBackgroundResource(
             if (dockRight) R.drawable.bg_arrow_right else R.drawable.bg_arrow_left,
         )
-        binding.panel.interceptAllTouches = false
         val arrowLp = binding.edgeArrow.layoutParams as android.widget.FrameLayout.LayoutParams
         arrowLp.width = dp(16)
         arrowLp.height = dp(44)
@@ -580,7 +579,6 @@ class OverlayService : Service() {
         const val ACTION_PAUSE = "com.hy.autoswipe.PAUSE"
         const val ACTION_STOP = "com.hy.autoswipe.STOP"
         const val ACTION_SHOW = "com.hy.autoswipe.SHOW"
-        const val ACTION_HIDE = "com.hy.autoswipe.HIDE"
         private const val CHANNEL_ID = "overlay_quiet"
         private const val NOTIFY_ID = 1001
         private const val PREFS = "overlay"
