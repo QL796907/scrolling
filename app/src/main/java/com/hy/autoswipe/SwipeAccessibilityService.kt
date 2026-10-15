@@ -31,12 +31,8 @@ class SwipeAccessibilityService : AccessibilityService() {
             }
         } catch (_: Exception) {
         }
-        try {
-            if (Settings.canDrawOverlays(this)) {
-                OverlayService.ensureRunning(this)
-            }
-        } catch (_: Exception) {
-        }
+        // 不在这里拉起悬浮窗。从最近任务划掉后进程常被无障碍重新拉起，
+        // 若再 ensureRunning，侧边栏会自己出现。
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit

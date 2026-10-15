@@ -244,7 +244,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="权限只需开一次。为了无障碍不被系统关掉，请关闭电池限制，并允许自启动。小米 / 华为 / OPPO 建议在最近任务里锁定本应用。"
+                android:text="权限只需开一次。滑动时如果系统把无障碍关掉，可以关闭电池限制。从最近任务里划掉本应用后，侧边栏会停，不会再自己打开。"
                 android:textColor="@color/ink_muted"
                 android:textSize="13sp" />
 
@@ -262,7 +262,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginTop="8dp"
-                android:text="允许自启动（保持无障碍不关）" />
+                android:text="后台运行（滑动时不被关掉）" />
         </LinearLayout>
 
         <Button

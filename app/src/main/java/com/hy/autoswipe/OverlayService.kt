@@ -71,6 +71,15 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        if (isClosedByUser(this)) {
+            startInForegroundSafely()
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (_: Exception) {
+            }
+            stopSelf()
+            return
+        }
         try {
             createChannel()
         } catch (_: Exception) {
@@ -87,6 +96,15 @@ class OverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (isClosedByUser(this)) {
+            startInForegroundSafely()
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (_: Exception) {
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
         try {
             when (intent?.action) {
                 ACTION_START -> startSwiping()
@@ -97,7 +115,19 @@ class OverlayService : Service() {
             }
         } catch (_: Exception) {
         }
-        return START_STICKY
+        return START_NOT_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        markClosedByUser(this)
+        pauseSwiping()
+        detachPanel()
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (_: Exception) {
+        }
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
@@ -563,21 +593,31 @@ class OverlayService : Service() {
         private const val NOTIFY_ID = 1001
         private const val PREFS = "overlay"
         private const val KEY_HIDDEN = "panel_hidden"
+        private const val KEY_CLOSED = "closed_by_user"
 
         @Volatile
         var instance: OverlayService? = null
             private set
 
         fun start(context: Context) {
+            noteUserOpened(context)
             setHiddenPref(context, false)
             val intent = Intent(context, OverlayService::class.java).setAction(ACTION_SHOW)
             startServiceInternal(context, intent)
         }
 
         fun ensureRunning(context: Context) {
+            if (isClosedByUser(context)) return
             if (instance != null) return
             startServiceInternal(context, Intent(context, OverlayService::class.java))
         }
+
+        fun noteUserOpened(context: Context) {
+            markClosedByUser(context, false)
+        }
+
+        fun isClosedByUser(context: Context): Boolean =
+            overlayPrefs(context).getBoolean(KEY_CLOSED, false)
 
         fun hide(context: Context) {
             setHiddenPref(context, true)
@@ -607,6 +647,10 @@ class OverlayService : Service() {
 
         private fun setHiddenPref(context: Context, hidden: Boolean) {
             overlayPrefs(context).edit().putBoolean(KEY_HIDDEN, hidden).apply()
+        }
+
+        private fun markClosedByUser(context: Context, closed: Boolean = true) {
+            overlayPrefs(context).edit().putBoolean(KEY_CLOSED, closed).commit()
         }
     }
 
