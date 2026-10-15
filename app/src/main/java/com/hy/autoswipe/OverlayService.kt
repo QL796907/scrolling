@@ -21,6 +21,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
@@ -238,6 +239,7 @@ class OverlayService : Service() {
         drag: (Int, Int) -> Unit,
         dragEnd: (Boolean) -> Unit,
     ) {
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
         var startX = 0f
         var startY = 0f
         var lastX = 0f
@@ -259,7 +261,9 @@ class OverlayService : Service() {
                     val dy = (event.rawY - lastY).toInt()
                     lastX = event.rawX
                     lastY = event.rawY
-                    if (kotlin.math.abs(event.rawX - startX) > 8 || kotlin.math.abs(event.rawY - startY) > 8) {
+                    if (kotlin.math.abs(event.rawX - startX) > touchSlop ||
+                        kotlin.math.abs(event.rawY - startY) > touchSlop
+                    ) {
                         moved = true
                     }
                     if (moved) drag(dx, dy)
