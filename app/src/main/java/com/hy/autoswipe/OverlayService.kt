@@ -194,7 +194,7 @@ class OverlayService : Service() {
             y = overlayStartY()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             }
         }
 
@@ -294,6 +294,26 @@ class OverlayService : Service() {
             if (dockRight) R.drawable.bg_arrow_right else R.drawable.bg_arrow_left,
         )
         binding.panel.interceptAllTouches = false
+        val arrowLp = binding.edgeArrow.layoutParams as android.widget.FrameLayout.LayoutParams
+        arrowLp.width = dp(16)
+        arrowLp.height = dp(44)
+        arrowLp.gravity = if (dockRight) {
+            Gravity.END or Gravity.CENTER_VERTICAL
+        } else {
+            Gravity.START or Gravity.CENTER_VERTICAL
+        }
+        arrowLp.marginStart = 0
+        arrowLp.marginEnd = 0
+        binding.edgeArrow.layoutParams = arrowLp
+        binding.edgeArrow.setPadding(0, 0, 0, 0)
+        // 收起后允许贴到物理边缘。展开时去掉，避免悬浮窗被拉成全屏挡住点击。
+        val edgeFlags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        params.flags = if (peeked) {
+            params.flags or edgeFlags
+        } else {
+            params.flags and edgeFlags.inv()
+        }
         params.width = overlayWidth()
         params.height = overlayHeight()
     }
@@ -422,9 +442,9 @@ class OverlayService : Service() {
         refreshNotification()
     }
 
-    private fun overlayWidth(): Int = if (peeked) dp(20) else dp(56)
+    private fun overlayWidth(): Int = if (peeked) dp(16) else dp(56)
 
-    private fun overlayHeight(): Int = if (peeked) dp(48) else dp(148)
+    private fun overlayHeight(): Int = if (peeked) dp(44) else dp(148)
 
     private fun overlayStartX(): Int = screenWidth() - overlayWidth()
 
@@ -436,9 +456,22 @@ class OverlayService : Service() {
         return bar + dp(8)
     }
 
-    private fun screenWidth(): Int = resources.displayMetrics.widthPixels
+    private fun screenWidth(): Int = displaySize().first
 
-    private fun screenHeight(): Int = resources.displayMetrics.heightPixels
+    private fun screenHeight(): Int = displaySize().second
+
+    private fun displaySize(): Pair<Int, Int> {
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            bounds.width() to bounds.height()
+        } else {
+            val metrics = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealMetrics(metrics)
+            metrics.widthPixels to metrics.heightPixels
+        }
+    }
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
