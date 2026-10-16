@@ -20,15 +20,17 @@ object PermissionStore {
             .apply()
     }
 
-    fun waitForAccessibility(timeoutMs: Long, callback: (Boolean) -> Unit) {
+    fun waitForAccessibility(timeoutMs: Long, callback: (Boolean) -> Unit): () -> Unit {
         if (SwipeAccessibilityService.instance != null) {
             callback(true)
-            return
+            return {}
         }
         val handler = Handler(Looper.getMainLooper())
         val deadline = SystemClock.uptimeMillis() + timeoutMs
+        var cancelled = false
         val check = object : Runnable {
             override fun run() {
+                if (cancelled) return
                 when {
                     SwipeAccessibilityService.instance != null -> callback(true)
                     SystemClock.uptimeMillis() >= deadline -> callback(false)
@@ -37,5 +39,9 @@ object PermissionStore {
             }
         }
         handler.post(check)
+        return {
+            cancelled = true
+            handler.removeCallbacks(check)
+        }
     }
 }
