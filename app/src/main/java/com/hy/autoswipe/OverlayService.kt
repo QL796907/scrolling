@@ -19,9 +19,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
@@ -220,51 +218,8 @@ class OverlayService : Service() {
         panel.onPointerDown = { dragAccumX = 0 }
         panel.onDrag = drag
         panel.onDragEnd = dragEnd
-        enableArrowDrag(drag, dragEnd)
+        panel.bindEdgeArrow(binding.edgeArrow)
         render()
-    }
-
-    private fun enableArrowDrag(
-        drag: (Int, Int) -> Unit,
-        dragEnd: (Boolean) -> Unit,
-    ) {
-        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
-        var startX = 0f
-        var startY = 0f
-        var lastX = 0f
-        var lastY = 0f
-        var moved = false
-        binding.edgeArrow.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    startX = event.rawX
-                    startY = event.rawY
-                    lastX = event.rawX
-                    lastY = event.rawY
-                    moved = false
-                    dragAccumX = 0
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - lastX).toInt()
-                    val dy = (event.rawY - lastY).toInt()
-                    lastX = event.rawX
-                    lastY = event.rawY
-                    if (kotlin.math.abs(event.rawX - startX) > touchSlop ||
-                        kotlin.math.abs(event.rawY - startY) > touchSlop
-                    ) {
-                        moved = true
-                    }
-                    if (moved) drag(dx, dy)
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    dragEnd(moved)
-                    true
-                }
-                else -> false
-            }
-        }
     }
 
     private fun settleAfterDrag() {
