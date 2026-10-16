@@ -83,11 +83,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnApplyInterval.setOnClickListener { applyInterval() }
         binding.btnManagePresets.setOnClickListener {
-            try {
-                startActivity(Intent(this, PresetsActivity::class.java))
-            } catch (_: Exception) {
-                Toast.makeText(this, "无法打开选项页", Toast.LENGTH_SHORT).show()
-            }
+            startActivity(Intent(this, PresetsActivity::class.java))
         }
         binding.btnCheckUpdate.setOnClickListener { checkForUpdate(manual = true) }
         binding.checkUseMirror.isChecked = AppUpdater.useMirror(this)
