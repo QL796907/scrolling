@@ -37,10 +37,6 @@ object OemSettings {
             ),
         ),
         Intent("miui.intent.action.OP_AUTO_START").addCategory(Intent.CATEGORY_DEFAULT),
-        Intent().setClassName(
-            "com.miui.securitycenter",
-            "com.miui.permcenter.autostart.AutoStartManagementActivity",
-        ),
         Intent().setComponent(
             ComponentName(
                 "com.huawei.systemmanager",

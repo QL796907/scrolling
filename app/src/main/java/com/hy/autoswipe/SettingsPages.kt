@@ -17,9 +17,6 @@ object SettingsPages {
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(
                     Uri.fromParts("package", pkg, null),
                 ),
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(
-                    Uri.parse("package:$pkg"),
-                ),
                 Intent(Settings.ACTION_APPLICATION_SETTINGS),
                 Intent(Settings.ACTION_SETTINGS),
             ),
@@ -32,7 +29,6 @@ object SettingsPages {
             context,
             listOf(
                 Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
-                Intent("android.settings.ACCESSIBILITY_SETTINGS"),
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(
                     Uri.fromParts("package", context.packageName, null),
                 ),
@@ -48,9 +44,6 @@ object SettingsPages {
             context,
             listOf(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$pkg")),
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).setData(
-                    Uri.fromParts("package", pkg, null),
-                ),
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(
                     Uri.fromParts("package", pkg, null),
@@ -81,15 +74,14 @@ object SettingsPages {
 
     fun launch(context: Context, intents: List<Intent>, failToast: String): Boolean {
         val activity = context as? Activity
-        val fromActivity = activity != null && !activity.isFinishing
+        val liveActivity = activity != null && !activity.isFinishing
         for (raw in intents) {
-            val first = Intent(raw)
-            if (!fromActivity) {
-                first.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val intent = Intent(raw)
+            // OverlayService 不是 Activity，这一次就已经带 NEW_TASK；再启动同一组件是同一次跳转。
+            if (!liveActivity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            if (tryStart(context, first)) return true
-            val withNewTask = Intent(raw).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (tryStart(context, withNewTask)) return true
+            if (tryStart(context, intent)) return true
         }
         Toast.makeText(context.applicationContext, failToast, Toast.LENGTH_LONG).show()
         return false
