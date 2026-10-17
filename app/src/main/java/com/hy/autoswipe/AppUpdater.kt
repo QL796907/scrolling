@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import org.json.JSONObject
 import java.io.File
@@ -151,6 +152,7 @@ object AppUpdater {
         try {
             context.startActivity(intent)
         } catch (_: Exception) {
+            Toast.makeText(context.applicationContext, "无法打开安装界面", Toast.LENGTH_LONG).show()
         }
     }
 

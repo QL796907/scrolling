@@ -39,10 +39,7 @@ class MainActivity : AppCompatActivity() {
     private val unknownSourcesLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) {
-        val file = pendingApk
-        if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
-            AppUpdater.installApk(this, file)
-        }
+        // 返回后由 onResume 安装 pendingApk，这里再装会把安装器打开两次。
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
