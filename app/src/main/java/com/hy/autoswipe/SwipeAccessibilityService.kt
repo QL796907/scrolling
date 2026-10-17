@@ -5,11 +5,8 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.graphics.Path
-import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import android.util.DisplayMetrics
-import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 
@@ -36,7 +33,7 @@ class SwipeAccessibilityService : AccessibilityService() {
             val pm = getSystemService(PowerManager::class.java)
             if (pm?.isInteractive == false) return true
 
-            val (width, height) = screenSize()
+            val (width, height) = displaySize()
             if (width <= 0 || height <= 0) return false
 
             val startX = width / 2f
@@ -51,19 +48,6 @@ class SwipeAccessibilityService : AccessibilityService() {
             dispatchGesture(gesture, null, null)
         } catch (_: Exception) {
             false
-        }
-    }
-
-    private fun screenSize(): Pair<Int, Int> {
-        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = wm.currentWindowMetrics.bounds
-            bounds.width() to bounds.height()
-        } else {
-            val metrics = DisplayMetrics()
-            @Suppress("DEPRECATION")
-            wm.defaultDisplay.getRealMetrics(metrics)
-            metrics.widthPixels to metrics.heightPixels
         }
     }
 
