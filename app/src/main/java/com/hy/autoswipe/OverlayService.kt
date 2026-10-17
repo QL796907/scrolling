@@ -41,6 +41,7 @@ class OverlayService : Service() {
     private var peeked = false
     private var panelAttached = false
     private var connecting = false
+    private var accessibilityWaitCancel: (() -> Unit)? = null
     private var dragAccumX = 0
 
     private val tick = object : Runnable {
@@ -108,6 +109,8 @@ class OverlayService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        // stopSelf 之后 onDestroy 才进主线程队列，连接回调可能先跑。
+        cancelAccessibilityWait()
         markClosedByUser(this)
         pauseSwiping()
         detachPanel()
@@ -120,11 +123,20 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
+        // 连接轮询挂在主线程且无人取消；划掉任务后只移除了 tick，回调仍会 beginRun 或打开设置。
+        cancelAccessibilityWait()
         pauseSwiping()
         animator?.cancel()
         detachPanel()
         if (instance === this) instance = null
         super.onDestroy()
+    }
+
+    private fun cancelAccessibilityWait() {
+        connecting = false
+        val cancel = accessibilityWaitCancel
+        accessibilityWaitCancel = null
+        cancel?.invoke()
     }
 
     private fun showOverlay() {
@@ -319,8 +331,10 @@ class OverlayService : Service() {
         if (SwipeAccessibilityService.isEnabled(this)) {
             connecting = true
             Toast.makeText(this, "正在连接无障碍…", Toast.LENGTH_SHORT).show()
-            PermissionStore.waitForAccessibility(2500) { ok ->
+            accessibilityWaitCancel = PermissionStore.waitForAccessibility(2500) { ok ->
+                if (!connecting) return@waitForAccessibility
                 connecting = false
+                accessibilityWaitCancel = null
                 if (ok) beginRun() else promptAccessibility()
             }
             return
