@@ -24,6 +24,8 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.hy.autoswipe.databinding.OverlayPanelBinding
 import kotlin.random.Random
 
@@ -43,6 +45,7 @@ class OverlayService : Service() {
     private var connecting = false
     private var accessibilityWaitCancel: (() -> Unit)? = null
     private var dragAccumX = 0
+    private var startYPending = true
 
     private val tick = object : Runnable {
         override fun run() {
@@ -203,6 +206,8 @@ class OverlayService : Service() {
 
         val drag = { dx: Int, dy: Int ->
             animator?.cancel()
+            // 拖过之后保留当前位置，不再拉回起始高度。
+            startYPending = false
             dragAccumX += dx
             val minX = 0
             val maxX = (screenWidth() - overlayWidth()).coerceAtLeast(0)
@@ -282,11 +287,17 @@ class OverlayService : Service() {
         applyPeekUi()
         binding.root.post {
             if (!panelAttached || !::binding.isInitialized) return@post
+            // 布局前没有 WindowInsets。还没拖动时，用这次 post 的状态栏高度摆起始位置。
+            if (startYPending && ViewCompat.getRootWindowInsets(binding.root) != null) {
+                params.y = overlayStartY()
+                startYPending = false
+            }
             val width = overlayWidth()
             val targetX = if (dockRight) screenWidth() - width else 0
+            val minY = statusBarInset()
             val targetY = params.y.coerceIn(
-                statusBarInset(),
-                (screenHeight() - overlayHeight()).coerceAtLeast(statusBarInset()),
+                minY,
+                (screenHeight() - overlayHeight()).coerceAtLeast(minY),
             )
             moveTo(targetX, targetY, animate)
         }
@@ -411,8 +422,10 @@ class OverlayService : Service() {
     private fun overlayStartY(): Int = statusBarInset() + dp(180)
 
     private fun statusBarInset(): Int {
-        val id = resources.getIdentifier("status_bar_height", "dimen", "android")
-        val bar = if (id > 0) resources.getDimensionPixelSize(id) else dp(24)
+        val bar = ViewCompat.getRootWindowInsets(binding.root)
+            ?.getInsets(WindowInsetsCompat.Type.statusBars())
+            ?.top
+            ?: 0
         return bar + dp(8)
     }
 
