@@ -3,9 +3,9 @@ $ErrorActionPreference = "Stop"
 $env:JAVA_HOME = "C:\Program Files\Zulu\zulu-17"
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
-$gradle = "$env:TEMP\autoswipe-sdk\gradle-8.7\bin\gradle.bat"
+$gradle = Join-Path $PSScriptRoot "gradlew.bat"
 if (-not (Test-Path $gradle)) {
-    throw "未找到 Gradle，请先解压 gradle-8.7 到 $env:TEMP\autoswipe-sdk\gradle-8.7"
+    throw "未找到 Gradle Wrapper：$gradle"
 }
 
 Set-Location $PSScriptRoot
