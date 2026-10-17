@@ -44,6 +44,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState?.getBoolean(KEY_PENDING_INSTALL) == true) {
+            pendingApk = AppUpdater.apkFile(this)
+        }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SystemBars.lockLight(this)
@@ -129,6 +132,19 @@ class MainActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // 未知来源设置在前台时 Activity 会被重建。只存标记，安装包路径固定是 AppUpdater.apkFile。
+        outState.putBoolean(KEY_PENDING_INSTALL, pendingApk != null)
+    }
+
+    override fun onDestroy() {
+        // 进度框挂在这个窗口上，销毁时关掉，避免重建后泄漏。
+        downloadDialog?.dismiss()
+        downloadDialog = null
+        super.onDestroy()
     }
 
     private fun renderAppVersion() {
@@ -379,5 +395,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
         AppUpdater.installApk(this, file)
+    }
+
+    companion object {
+        private const val KEY_PENDING_INSTALL = "pending_install"
     }
 }
