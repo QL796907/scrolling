@@ -1,14 +1,13 @@
 package com.hy.autoswipe
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
+import android.content.ComponentName
 import android.content.Context
 import android.graphics.Path
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityManager
 
 class SwipeAccessibilityService : AccessibilityService() {
 
@@ -58,35 +57,14 @@ class SwipeAccessibilityService : AccessibilityService() {
 
         fun isEnabled(context: Context): Boolean {
             if (instance != null) return true
-            val pkg = context.packageName
-            val expected = SwipeAccessibilityService::class.java.name
-            val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-            val enabledServices = manager.getEnabledAccessibilityServiceList(
-                AccessibilityServiceInfo.FEEDBACK_ALL_MASK,
-            )
-            if (enabledServices.any { info ->
-                    val name = info.resolveInfo?.serviceInfo?.name ?: return@any false
-                    val servicePkg = info.resolveInfo?.serviceInfo?.packageName ?: return@any false
-                    servicePkg == pkg && (
-                        name == expected ||
-                            name.endsWith(".SwipeAccessibilityService") ||
-                            name.contains("SwipeAccessibilityService")
-                        )
-                }
-            ) {
-                return true
-            }
+            // 系统这项是冒号分隔的组件名，只按两种扁平写法精确匹配。
+            val component = ComponentName(context, SwipeAccessibilityService::class.java)
+            val expected = setOf(component.flattenToString(), component.flattenToShortString())
             val raw = Settings.Secure.getString(
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
             ) ?: return false
-            return raw.split(':', ';', ',', '|').any { token ->
-                val item = token.trim()
-                if (item.isEmpty()) return@any false
-                val matchesPkg = item.contains(pkg, ignoreCase = true)
-                val matchesService = item.contains("SwipeAccessibilityService", ignoreCase = true)
-                matchesPkg && matchesService
-            }
+            return raw.split(':').any { token -> token.trim() in expected }
         }
     }
 }
