@@ -24,7 +24,19 @@ class PresetsActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener { finish() }
         binding.btnAdd.setOnClickListener { savePreset() }
         binding.btnCancelEdit.setOnClickListener { clearForm() }
+        editingId = savedInstanceState?.getString(KEY_EDITING_ID)
         renderList()
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        // 输入框由视图层级恢复。标题、按钮和「取消」只跟 editingId，避免旋转后仍显示「保存修改」却走新增。
+        applyEditChrome()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_EDITING_ID, editingId)
     }
 
     private fun savePreset() {
@@ -48,9 +60,7 @@ class PresetsActivity : AppCompatActivity() {
 
     private fun startEdit(preset: IntervalPreset) {
         editingId = preset.id
-        binding.formTitle.text = "编辑选项"
-        binding.btnAdd.text = "保存修改"
-        binding.btnCancelEdit.visibility = View.VISIBLE
+        applyEditChrome()
         binding.inputName.setText(preset.name)
         binding.inputMin.setText(preset.min.toString())
         binding.inputMax.setText(preset.max.toString())
@@ -60,12 +70,17 @@ class PresetsActivity : AppCompatActivity() {
 
     private fun clearForm() {
         editingId = null
-        binding.formTitle.text = "新增选项"
-        binding.btnAdd.text = "添加并保存"
-        binding.btnCancelEdit.visibility = View.GONE
+        applyEditChrome()
         binding.inputName.text.clear()
         binding.inputMin.text.clear()
         binding.inputMax.text.clear()
+    }
+
+    private fun applyEditChrome() {
+        val editing = editingId != null
+        binding.formTitle.text = if (editing) "编辑选项" else "新增选项"
+        binding.btnAdd.text = if (editing) "保存修改" else "添加并保存"
+        binding.btnCancelEdit.visibility = if (editing) View.VISIBLE else View.GONE
     }
 
     private fun parseInputs(): Triple<String, Int, Int>? {
@@ -92,5 +107,9 @@ class PresetsActivity : AppCompatActivity() {
             }
             binding.presetList.addView(item.root)
         }
+    }
+
+    companion object {
+        private const val KEY_EDITING_ID = "editing_id"
     }
 }
