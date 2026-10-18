@@ -64,10 +64,8 @@ object AppUpdater {
         return File(dir, "update.apk")
     }
 
-    fun canInstallPackages(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
-        return context.packageManager.canRequestPackageInstalls()
-    }
+    fun canInstallPackages(context: Context): Boolean =
+        context.packageManager.canRequestPackageInstalls()
 
     fun installPermissionIntent(context: Context): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
