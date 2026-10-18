@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.hy.autoswipe"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 32
         versionCode = 11
         versionName = "1.10"
