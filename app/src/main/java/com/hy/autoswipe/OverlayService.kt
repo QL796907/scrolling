@@ -420,19 +420,6 @@ class OverlayService : Service() {
 
     private fun screenHeight(): Int = displaySize().second
 
-    private fun displaySize(): Pair<Int, Int> {
-        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = wm.currentWindowMetrics.bounds
-            bounds.width() to bounds.height()
-        } else {
-            val metrics = android.util.DisplayMetrics()
-            @Suppress("DEPRECATION")
-            wm.defaultDisplay.getRealMetrics(metrics)
-            metrics.widthPixels to metrics.heightPixels
-        }
-    }
-
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
 
@@ -444,15 +431,12 @@ class OverlayService : Service() {
                 @Suppress("DEPRECATION")
                 getSystemService(Vibrator::class.java)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
-            }
+            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
         } catch (_: Exception) {
         }
     }
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel),
@@ -588,13 +572,7 @@ class OverlayService : Service() {
         private fun startServiceInternal(context: Context, intent: Intent) {
             val appContext = context.applicationContext
             try {
-                // API 26+ 后台限制下 startForegroundService 失败后再调 startService 同样抛
-                // IllegalStateException；API 24–25 两条路径都是 startService，重试无效。
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    appContext.startForegroundService(intent)
-                } else {
-                    appContext.startService(intent)
-                }
+                appContext.startForegroundService(intent)
             } catch (_: Exception) {
             }
         }
