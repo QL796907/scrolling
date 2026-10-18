@@ -420,19 +420,6 @@ class OverlayService : Service() {
 
     private fun screenHeight(): Int = displaySize().second
 
-    private fun displaySize(): Pair<Int, Int> {
-        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = wm.currentWindowMetrics.bounds
-            bounds.width() to bounds.height()
-        } else {
-            val metrics = android.util.DisplayMetrics()
-            @Suppress("DEPRECATION")
-            wm.defaultDisplay.getRealMetrics(metrics)
-            metrics.widthPixels to metrics.heightPixels
-        }
-    }
-
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
 
