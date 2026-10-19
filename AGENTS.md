@@ -11,6 +11,7 @@
 
 - Android Studio Run，仓库根目录 `./gradlew assembleDebug`，或 `build-apk.ps1`（调用 `gradlew.bat`）
 - 需要 JDK 17 与 Android SDK
+- GitHub Actions（`.github/workflows/ci.yml`）在 pull request 和 push 到 `main` 时跑 `./gradlew assembleDebug`，不需要签名密钥
 
 ## 发版
 

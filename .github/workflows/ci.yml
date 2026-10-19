@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assemble-debug:
+    name: Assemble debug
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-34 build-tools;34.0.0
+
+      # The wrapper points at a Tencent mirror with a 10s timeout, which is
+      # unreliable from GitHub-hosted runners. Local checkouts keep that URL.
+      - name: Use the official Gradle distribution
+        run: |
+          sed -i \
+            -e 's|mirrors.cloud.tencent.com/gradle/|services.gradle.org/distributions/|' \
+            -e 's|networkTimeout=10000|networkTimeout=120000|' \
+            gradle/wrapper/gradle-wrapper.properties
+
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --stacktrace
