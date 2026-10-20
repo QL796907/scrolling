@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "1.10",
+  "versionCode": 12,
+  "versionName": "1.11",
   "apkUrl": "https://github.com/QL796907/scrolling/releases/latest/download/autoswipe.apk",
-  "note": "检查更新可勾选「使用镜像下载」（默认开），经 gh.4o.pw 加速 GitHub 文件。说明：https://gh.4o.pw/docs"
+  "note": "从最近任务划掉后不再自己打开。收起的小箭头紧贴屏幕边缘。需要 Android 8.0 及以上。"
 }

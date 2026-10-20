@@ -4,7 +4,7 @@
 
 - 本地目录：`scrolling`
 - 包名：`com.hy.autoswipe`（不要随文件夹改名，否则手机无法覆盖安装）
-- 版本：1.10（`versionCode` 11）
+- 版本：1.11（`versionCode` 12）
 - 仓库：https://github.com/QL796907/scrolling
 
 ## 构建
@@ -20,7 +20,7 @@
 1. `app/build.gradle.kts` 的 `versionCode` +1，并改 `versionName`
 2. 同步 `version.json`
 3. 打出 `autoswipe.apk`
-4. 第一次发版写完整 README；之后每次发版只更新 README 里有变化的部分
+4. 第一次发版写完整 README；之后每次发版只更新 README 里有变化的部分。给会下载安装的普通人看：是什么、下哪个包、怎么装、第一次怎么用、卡住时的提示。中文，一两分钟能读完。不写技术栈、编译、API、贡献指南
 5. GitHub Release 同时挂 `autoswipe.apk` 和 `version.json`
 
 检查更新可勾选「使用镜像下载」（默认开），经 `https://gh.4o.pw/` 加速 GitHub 文件，说明见 https://gh.4o.pw/docs 。`version.json` 可加 `apkMirrors`、`apkSha256`。
