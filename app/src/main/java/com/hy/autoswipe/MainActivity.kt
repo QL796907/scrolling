@@ -111,10 +111,10 @@ class MainActivity : AppCompatActivity() {
                         OverlayService.noteUserOpened(this)
                         OverlayService.ensureRunning(this)
                     }
-                    refreshStatus()
-                    binding.root.postDelayed({
+                    // onCreate 已在主线程队列里。再 post 一次才会排在服务消息后面，读到 panelAttached。
+                    binding.root.post {
                         if (!isDestroyed) refreshStatus()
-                    }, 400)
+                    }
                 }
             }
             val file = pendingApk
@@ -213,9 +213,10 @@ class MainActivity : AppCompatActivity() {
         }
         OverlayService.start(this)
         Toast.makeText(this, "侧边栏已打开。点「开」开始上滑，往外拖可以收进去", Toast.LENGTH_LONG).show()
-        binding.root.postDelayed({
+        // onCreate / onStartCommand 已在主线程队列里，post 一次即可刷新按钮。
+        binding.root.post {
             if (!isDestroyed) refreshStatus()
-        }, 400)
+        }
     }
 
     private fun refreshStatus() {
