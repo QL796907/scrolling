@@ -96,41 +96,35 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        try {
+        // 先装已下载的更新。状态或选项刷新抛错时，不能把磁盘上的安装包留着不装。
+        val file = pendingApk
+        if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
+            pendingApk = null
+            AppUpdater.installApk(this, file)
+        }
+        binding.root.post {
+            if (!isDestroyed) maybeAskNotificationPermission()
+        }
+        refreshStatus()
+        renderInterval()
+        if (Settings.canDrawOverlays(this)) {
+            // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏。
+            // 用户自己打开应用才算继续用，清掉「从最近任务划掉」的标记。
             binding.root.post {
-                if (!isDestroyed) maybeAskNotificationPermission()
-            }
-            refreshStatus()
-            renderInterval()
-            if (Settings.canDrawOverlays(this)) {
-                // 第一帧后再拉前台服务，且不强制 SHOW：点过「收起」回来不应再弹出侧边栏。
-                // 用户自己打开应用才算继续用，清掉「从最近任务划掉」的标记。
+                if (isDestroyed || isFinishing) return@post
+                if (Settings.canDrawOverlays(this)) {
+                    OverlayService.noteUserOpened(this)
+                    OverlayService.ensureRunning(this)
+                }
+                // onCreate 已在主线程队列里。再 post 一次才会排在服务消息后面，读到 panelAttached。
                 binding.root.post {
-                    if (isDestroyed || isFinishing) return@post
-                    if (Settings.canDrawOverlays(this)) {
-                        OverlayService.noteUserOpened(this)
-                        OverlayService.ensureRunning(this)
-                    }
-                    // onCreate 已在主线程队列里。再 post 一次才会排在服务消息后面，读到 panelAttached。
-                    binding.root.post {
-                        if (!isDestroyed) refreshStatus()
-                    }
+                    if (!isDestroyed) refreshStatus()
                 }
             }
-            val file = pendingApk
-            if (file != null && file.exists() && AppUpdater.canInstallPackages(this)) {
-                pendingApk = null
-                AppUpdater.installApk(this, file)
-            }
-            if (!didAutoCheck) {
-                didAutoCheck = true
-                checkForUpdate(manual = false)
-            }
-        } catch (_: Exception) {
-            try {
-                refreshStatus()
-            } catch (_: Exception) {
-            }
+        }
+        if (!didAutoCheck) {
+            didAutoCheck = true
+            checkForUpdate(manual = false)
         }
     }
 
