@@ -46,6 +46,7 @@ class OverlayService : Service() {
     private var accessibilityWaitCancel: (() -> Unit)? = null
     private var dragAccumX = 0
     private var startYPending = true
+    private var closedQuitEnteredForeground = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -65,15 +66,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        if (isClosedByUser(this)) {
-            startInForegroundSafely()
-            try {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } catch (_: Exception) {
-            }
-            stopSelf()
-            return
-        }
+        if (quitIfClosedByUser()) return
         try {
             createChannel()
         } catch (_: Exception) {
@@ -89,15 +82,7 @@ class OverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (isClosedByUser(this)) {
-            startInForegroundSafely()
-            try {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } catch (_: Exception) {
-            }
-            stopSelf()
-            return START_NOT_STICKY
-        }
+        if (quitIfClosedByUser()) return START_NOT_STICKY
         try {
             when (intent?.action) {
                 ACTION_START -> startSwiping()
@@ -109,6 +94,22 @@ class OverlayService : Service() {
         } catch (_: Exception) {
         }
         return START_NOT_STICKY
+    }
+
+    // 一次 startForegroundService 会先 onCreate 再 onStartCommand。
+    // 划掉后的退出只在第一次进前台并马上撤掉；后一次再 startForeground 会把通知挂回来。
+    private fun quitIfClosedByUser(): Boolean {
+        if (!isClosedByUser(this)) return false
+        if (!closedQuitEnteredForeground) {
+            closedQuitEnteredForeground = true
+            startInForegroundSafely()
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (_: Exception) {
+            }
+        }
+        stopSelf()
+        return true
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
