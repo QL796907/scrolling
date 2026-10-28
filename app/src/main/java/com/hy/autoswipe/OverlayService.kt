@@ -47,6 +47,7 @@ class OverlayService : Service() {
     private var dragAccumX = 0
     private var startYPending = true
     private var closedQuitEnteredForeground = false
+    private var foregroundStartFailed = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -71,7 +72,7 @@ class OverlayService : Service() {
             createChannel()
         } catch (_: Exception) {
         }
-        startInForegroundSafely()
+        if (!startInForegroundSafely()) return
         try {
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
             if (!wasHiddenByUser()) {
@@ -82,6 +83,11 @@ class OverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // onCreate 里 startForeground 失败后，这次启动仍会进 onStartCommand。
+        if (foregroundStartFailed) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (quitIfClosedByUser()) return START_NOT_STICKY
         try {
             when (intent?.action) {
@@ -102,10 +108,11 @@ class OverlayService : Service() {
         if (!isClosedByUser(this)) return false
         if (!closedQuitEnteredForeground) {
             closedQuitEnteredForeground = true
-            startInForegroundSafely()
-            try {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-            } catch (_: Exception) {
+            if (startInForegroundSafely()) {
+                try {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                } catch (_: Exception) {
+                }
             }
         }
         stopSelf()
@@ -464,7 +471,9 @@ class OverlayService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun startInForegroundSafely() {
+    // API 34+ 只调带 specialUse 的 startForeground；更低版本只调无类型重载。
+    // 失败就停服务。再试另一种重载满足不了 targetSdk 34 的类型要求，只会把异常吃掉。
+    private fun startInForegroundSafely(): Boolean {
         val notification = try {
             buildNotification()
         } catch (_: Exception) {
@@ -476,23 +485,21 @@ class OverlayService : Service() {
                 .setSilent(true)
                 .build()
         }
-        val attempts = mutableListOf<() -> Unit>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            attempts += {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(
                     NOTIFY_ID,
                     notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
                 )
+            } else {
+                startForeground(NOTIFY_ID, notification)
             }
-        }
-        attempts += { startForeground(NOTIFY_ID, notification) }
-        for (attempt in attempts) {
-            try {
-                attempt()
-                return
-            } catch (_: Exception) {
-            }
+            return true
+        } catch (_: Exception) {
+            foregroundStartFailed = true
+            stopSelf()
+            return false
         }
     }
 
