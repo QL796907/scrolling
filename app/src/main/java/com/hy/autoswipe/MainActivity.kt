@@ -205,9 +205,12 @@ class MainActivity : AppCompatActivity() {
             refreshStatus()
             return
         }
-        OverlayService.start(this)
-        Toast.makeText(this, "侧边栏已打开。点「开」开始上滑，往外拖可以收进去", Toast.LENGTH_LONG).show()
-        // onCreate / onStartCommand 已在主线程队列里，post 一次即可刷新按钮。
+        if (OverlayService.start(this)) {
+            Toast.makeText(this, "侧边栏已打开。点「开」开始上滑，往外拖可以收进去", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "无法打开侧边栏", Toast.LENGTH_SHORT).show()
+        }
+        // 系统收下 Intent 后，onCreate / onStartCommand 才在主线程队列里。成败都 post 一次刷新按钮。
         binding.root.post {
             if (!isDestroyed) refreshStatus()
         }
