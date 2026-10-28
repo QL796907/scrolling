@@ -74,7 +74,7 @@ class OverlayService : Service() {
         startInForegroundSafely()
         try {
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-            if (!wasHiddenByUser()) {
+            if (!isHiddenByUser(this)) {
                 showOverlay()
             }
         } catch (_: Exception) {
@@ -89,7 +89,7 @@ class OverlayService : Service() {
                 ACTION_PAUSE -> pauseSwiping()
                 ACTION_STOP -> hidePanel()
                 ACTION_SHOW -> showOverlay()
-                else -> if (!wasHiddenByUser()) showOverlay()
+                else -> if (!isHiddenByUser(this)) showOverlay()
             }
         } catch (_: Exception) {
         }
@@ -159,14 +159,14 @@ class OverlayService : Service() {
         try {
             windowManager.addView(binding.root, params)
             panelAttached = true
-            setHiddenByUser(false)
+            markHiddenByUser(this, false)
             binding.root.post { applyDock(animate = false) }
         } catch (_: Exception) {
         }
     }
 
     fun hidePanel() {
-        setHiddenByUser(true)
+        markHiddenByUser(this, true)
         detachPanel()
     }
 
@@ -558,7 +558,7 @@ class OverlayService : Service() {
 
         fun start(context: Context): Boolean {
             noteUserOpened(context)
-            setHiddenPref(context, false)
+            markHiddenByUser(context, false)
             val intent = Intent(context, OverlayService::class.java).setAction(ACTION_SHOW)
             return startServiceInternal(context, intent)
         }
@@ -578,7 +578,7 @@ class OverlayService : Service() {
             overlayPrefs(context).getBoolean(KEY_CLOSED, false)
 
         fun hide(context: Context) {
-            setHiddenPref(context, true)
+            markHiddenByUser(context, true)
             instance?.hidePanel()
         }
 
@@ -596,19 +596,15 @@ class OverlayService : Service() {
         private fun overlayPrefs(context: Context) =
             context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-        private fun setHiddenPref(context: Context, hidden: Boolean) {
-            overlayPrefs(context).edit().putBoolean(KEY_HIDDEN, hidden).apply()
+        private fun isHiddenByUser(context: Context): Boolean =
+            overlayPrefs(context).getBoolean(KEY_HIDDEN, false)
+
+        private fun markHiddenByUser(context: Context, hidden: Boolean) {
+            overlayPrefs(context).edit().putBoolean(KEY_HIDDEN, hidden).commit()
         }
 
         private fun markClosedByUser(context: Context, closed: Boolean = true) {
             overlayPrefs(context).edit().putBoolean(KEY_CLOSED, closed).commit()
         }
-    }
-
-    private fun wasHiddenByUser(): Boolean =
-        getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HIDDEN, false)
-
-    private fun setHiddenByUser(hidden: Boolean) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_HIDDEN, hidden).apply()
     }
 }
