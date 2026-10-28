@@ -556,16 +556,17 @@ class OverlayService : Service() {
         var instance: OverlayService? = null
             private set
 
-        fun start(context: Context) {
+        fun start(context: Context): Boolean {
             noteUserOpened(context)
             setHiddenPref(context, false)
             val intent = Intent(context, OverlayService::class.java).setAction(ACTION_SHOW)
-            startServiceInternal(context, intent)
+            return startServiceInternal(context, intent)
         }
 
         fun ensureRunning(context: Context) {
             if (isClosedByUser(context)) return
             if (instance != null) return
+            // 不提示。用户点「显示侧边栏」才走 start，失败由那里说明。
             startServiceInternal(context, Intent(context, OverlayService::class.java))
         }
 
@@ -583,11 +584,12 @@ class OverlayService : Service() {
 
         fun isPanelVisible(): Boolean = instance?.panelAttached == true
 
-        private fun startServiceInternal(context: Context, intent: Intent) {
+        private fun startServiceInternal(context: Context, intent: Intent): Boolean {
             val appContext = context.applicationContext
-            try {
-                appContext.startForegroundService(intent)
+            return try {
+                appContext.startForegroundService(intent) != null
             } catch (_: Exception) {
+                false
             }
         }
 
