@@ -136,7 +136,8 @@ class OverlayService : Service() {
     override fun onDestroy() {
         // 连接轮询挂在主线程且无人取消；划掉任务后只移除了 tick，回调仍会 beginRun 或打开设置。
         cancelAccessibilityWait()
-        pauseSwiping()
+        running = false
+        handler.removeCallbacks(tick)
         animator?.cancel()
         detachPanel()
         if (instance === this) instance = null
